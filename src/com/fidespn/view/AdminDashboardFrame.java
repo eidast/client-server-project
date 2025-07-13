@@ -9,6 +9,7 @@ import com.fidespn.service.MatchManager;
 import com.fidespn.service.UserManager;
 import com.fidespn.service.exceptions.MatchNotFoundException;
 import com.fidespn.service.exceptions.UserNotFoundException;
+import com.fidespn.service.exceptions.DuplicateUsernameException;
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
@@ -128,6 +129,39 @@ public class AdminDashboardFrame extends JFrame {
         JButton createUserBtn = createStyledButton("Crear Nuevo Usuario", new Color(34, 197, 94));
         JButton editUserBtn = createStyledButton("Editar Usuario", new Color(234, 179, 8));
         JButton deleteUserBtn = createStyledButton("Eliminar Usuario", new Color(239, 68, 68));
+        
+        // Agregar listener para el botón crear usuario
+        createUserBtn.addActionListener(e -> showCreateUserDialog());
+        
+        // Agregar listener para el botón editar usuario
+        editUserBtn.addActionListener(e -> {
+            int selectedRow = usersTable.getSelectedRow();
+            if (selectedRow == -1) {
+                JOptionPane.showMessageDialog(this, 
+                    "Por favor, seleccione un usuario de la tabla para editar.", 
+                    "Usuario no seleccionado", 
+                    JOptionPane.WARNING_MESSAGE);
+                return;
+            }
+            String username = (String) usersTable.getValueAt(selectedRow, 0);
+            showEditUserDialog(username);
+        });
+        
+        // Agregar listener para el botón eliminar usuario
+        deleteUserBtn.addActionListener(e -> {
+            int selectedRow = usersTable.getSelectedRow();
+            if (selectedRow == -1) {
+                JOptionPane.showMessageDialog(this, 
+                    "Por favor, seleccione un usuario de la tabla para eliminar.", 
+                    "Usuario no seleccionado", 
+                    JOptionPane.WARNING_MESSAGE);
+                return;
+            }
+            String username = (String) usersTable.getValueAt(selectedRow, 0);
+            String role = (String) usersTable.getValueAt(selectedRow, 1);
+            showDeleteUserConfirmation(username, role);
+        });
+        
         userButtonsPanel.add(createUserBtn);
         userButtonsPanel.add(editUserBtn);
         userButtonsPanel.add(deleteUserBtn);
@@ -169,6 +203,492 @@ public class AdminDashboardFrame extends JFrame {
         mainPanel.add(footerPanel, BorderLayout.SOUTH);
 
         add(mainPanel);
+    }
+
+    private void showCreateUserDialog() {
+        JDialog dialog = new JDialog(this, "Crear Nuevo Usuario", true);
+        dialog.setLayout(new BorderLayout());
+        dialog.setSize(400, 500);
+        dialog.setLocationRelativeTo(this);
+        dialog.setResizable(false);
+
+        JPanel mainPanel = new JPanel();
+        mainPanel.setLayout(new GridBagLayout());
+        mainPanel.setBackground(new Color(240, 242, 245));
+        mainPanel.setBorder(new EmptyBorder(20, 20, 20, 20));
+
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.insets = new Insets(8, 8, 8, 8);
+        gbc.fill = GridBagConstraints.HORIZONTAL;
+
+        // Título
+        JLabel titleLabel = new JLabel("Crear Nuevo Usuario", SwingConstants.CENTER);
+        titleLabel.setFont(new Font("Inter", Font.BOLD, 20));
+        titleLabel.setForeground(new Color(52, 73, 94));
+        gbc.gridx = 0;
+        gbc.gridy = 0;
+        gbc.gridwidth = 2;
+        mainPanel.add(titleLabel, gbc);
+
+        // Campo Username
+        JLabel usernameLabel = new JLabel("Nombre de Usuario:");
+        usernameLabel.setFont(new Font("Inter", Font.BOLD, 14));
+        gbc.gridy = 1;
+        gbc.gridwidth = 1;
+        mainPanel.add(usernameLabel, gbc);
+
+        JTextField usernameField = new JTextField(20);
+        usernameField.setFont(new Font("Inter", Font.PLAIN, 14));
+        gbc.gridx = 1;
+        mainPanel.add(usernameField, gbc);
+
+        // Campo Password
+        JLabel passwordLabel = new JLabel("Contraseña:");
+        passwordLabel.setFont(new Font("Inter", Font.BOLD, 14));
+        gbc.gridx = 0;
+        gbc.gridy = 2;
+        mainPanel.add(passwordLabel, gbc);
+
+        JPasswordField passwordField = new JPasswordField(20);
+        passwordField.setFont(new Font("Inter", Font.PLAIN, 14));
+        gbc.gridx = 1;
+        mainPanel.add(passwordField, gbc);
+
+        // Campo Email
+        JLabel emailLabel = new JLabel("Email:");
+        emailLabel.setFont(new Font("Inter", Font.BOLD, 14));
+        gbc.gridx = 0;
+        gbc.gridy = 3;
+        mainPanel.add(emailLabel, gbc);
+
+        JTextField emailField = new JTextField(20);
+        emailField.setFont(new Font("Inter", Font.PLAIN, 14));
+        gbc.gridx = 1;
+        mainPanel.add(emailField, gbc);
+
+        // Campo Tipo de Usuario
+        JLabel userTypeLabel = new JLabel("Tipo de Usuario:");
+        userTypeLabel.setFont(new Font("Inter", Font.BOLD, 14));
+        gbc.gridx = 0;
+        gbc.gridy = 4;
+        mainPanel.add(userTypeLabel, gbc);
+
+        String[] userTypes = {"Fanático", "Corresponsal", "Administrador"};
+        JComboBox<String> userTypeCombo = new JComboBox<>(userTypes);
+        userTypeCombo.setFont(new Font("Inter", Font.PLAIN, 14));
+        gbc.gridx = 1;
+        mainPanel.add(userTypeCombo, gbc);
+
+        // Etiqueta para mensajes
+        JLabel messageLabel = new JLabel("", SwingConstants.CENTER);
+        messageLabel.setFont(new Font("Inter", Font.BOLD, 12));
+        gbc.gridx = 0;
+        gbc.gridy = 5;
+        gbc.gridwidth = 2;
+        mainPanel.add(messageLabel, gbc);
+
+        // Panel de botones
+        JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 10, 0));
+        buttonPanel.setOpaque(false);
+
+        JButton createButton = new JButton("Crear Usuario");
+        createButton.setFont(new Font("Inter", Font.BOLD, 14));
+        createButton.setBackground(new Color(34, 197, 94));
+        createButton.setForeground(Color.WHITE);
+        createButton.setFocusPainted(false);
+        createButton.setBorderPainted(false);
+        createButton.setOpaque(true);
+        createButton.setBorder(BorderFactory.createEmptyBorder(8, 16, 8, 16));
+        createButton.setCursor(new Cursor(Cursor.HAND_CURSOR));
+
+        JButton cancelButton = new JButton("Cancelar");
+        cancelButton.setFont(new Font("Inter", Font.BOLD, 14));
+        cancelButton.setBackground(new Color(107, 114, 128));
+        cancelButton.setForeground(Color.WHITE);
+        cancelButton.setFocusPainted(false);
+        cancelButton.setBorderPainted(false);
+        cancelButton.setOpaque(true);
+        cancelButton.setBorder(BorderFactory.createEmptyBorder(8, 16, 8, 16));
+        cancelButton.setCursor(new Cursor(Cursor.HAND_CURSOR));
+
+        buttonPanel.add(createButton);
+        buttonPanel.add(cancelButton);
+
+        gbc.gridy = 6;
+        mainPanel.add(buttonPanel, gbc);
+
+        // Listeners
+        createButton.addActionListener(e -> {
+            String username = usernameField.getText().trim();
+            String password = new String(passwordField.getPassword());
+            String email = emailField.getText().trim();
+            String selectedUserType = (String) userTypeCombo.getSelectedItem();
+
+            // Validaciones
+            if (username.isEmpty() || password.isEmpty() || email.isEmpty()) {
+                messageLabel.setText("Todos los campos son obligatorios");
+                messageLabel.setForeground(new Color(239, 68, 68));
+                return;
+            }
+
+            if (username.length() < 3) {
+                messageLabel.setText("El nombre de usuario debe tener al menos 3 caracteres");
+                messageLabel.setForeground(new Color(239, 68, 68));
+                return;
+            }
+
+            if (password.length() < 6) {
+                messageLabel.setText("La contraseña debe tener al menos 6 caracteres");
+                messageLabel.setForeground(new Color(239, 68, 68));
+                return;
+            }
+
+            if (!email.contains("@")) {
+                messageLabel.setText("Ingrese un email válido");
+                messageLabel.setForeground(new Color(239, 68, 68));
+                return;
+            }
+
+            try {
+                // Convertir el tipo de usuario seleccionado al formato esperado por el UserManager
+                String userTypeForManager = "";
+                switch (selectedUserType) {
+                    case "Fanático":
+                        userTypeForManager = "fanatic";
+                        break;
+                    case "Corresponsal":
+                        userTypeForManager = "correspondent";
+                        break;
+                    case "Administrador":
+                        userTypeForManager = "admin";
+                        break;
+                }
+
+                User newUser = userManager.registerUser(username, password, email, userTypeForManager);
+                
+                messageLabel.setText("Usuario creado exitosamente: " + newUser.getUsername());
+                messageLabel.setForeground(new Color(34, 197, 94));
+                
+                // Recargar la tabla de usuarios
+                loadDataIntoTables();
+                
+                // Cerrar el diálogo después de un breve delay
+                Timer timer = new Timer(1500, evt -> {
+                    dialog.dispose();
+                });
+                timer.setRepeats(false);
+                timer.start();
+                
+            } catch (DuplicateUsernameException ex) {
+                messageLabel.setText("El nombre de usuario ya existe");
+                messageLabel.setForeground(new Color(239, 68, 68));
+            } catch (Exception ex) {
+                messageLabel.setText("Error al crear usuario: " + ex.getMessage());
+                messageLabel.setForeground(new Color(239, 68, 68));
+            }
+        });
+
+        cancelButton.addActionListener(e -> dialog.dispose());
+
+        dialog.add(mainPanel, BorderLayout.CENTER);
+        dialog.setVisible(true);
+    }
+
+    private void showEditUserDialog(String username) {
+        JDialog dialog = new JDialog(this, "Editar Usuario", true);
+        dialog.setLayout(new BorderLayout());
+        dialog.setSize(400, 500);
+        dialog.setLocationRelativeTo(this);
+        dialog.setResizable(false);
+
+        JPanel mainPanel = new JPanel();
+        mainPanel.setLayout(new GridBagLayout());
+        mainPanel.setBackground(new Color(240, 242, 245));
+        mainPanel.setBorder(new EmptyBorder(20, 20, 20, 20));
+
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.insets = new Insets(8, 8, 8, 8);
+        gbc.fill = GridBagConstraints.HORIZONTAL;
+
+        // Título
+        JLabel titleLabel = new JLabel("Editar Usuario: " + username, SwingConstants.CENTER);
+        titleLabel.setFont(new Font("Inter", Font.BOLD, 20));
+        titleLabel.setForeground(new Color(52, 73, 94));
+        gbc.gridx = 0;
+        gbc.gridy = 0;
+        gbc.gridwidth = 2;
+        mainPanel.add(titleLabel, gbc);
+
+        // Campo Username
+        JLabel usernameLabel = new JLabel("Nombre de Usuario:");
+        usernameLabel.setFont(new Font("Inter", Font.BOLD, 14));
+        gbc.gridy = 1;
+        gbc.gridwidth = 1;
+        mainPanel.add(usernameLabel, gbc);
+
+        JTextField usernameField = new JTextField(20);
+        usernameField.setFont(new Font("Inter", Font.PLAIN, 14));
+        gbc.gridx = 1;
+        mainPanel.add(usernameField, gbc);
+
+        // Campo Password
+        JLabel passwordLabel = new JLabel("Contraseña:");
+        passwordLabel.setFont(new Font("Inter", Font.BOLD, 14));
+        gbc.gridx = 0;
+        gbc.gridy = 2;
+        mainPanel.add(passwordLabel, gbc);
+
+        JPasswordField passwordField = new JPasswordField(20);
+        passwordField.setFont(new Font("Inter", Font.PLAIN, 14));
+        gbc.gridx = 1;
+        mainPanel.add(passwordField, gbc);
+
+        // Campo Email
+        JLabel emailLabel = new JLabel("Email:");
+        emailLabel.setFont(new Font("Inter", Font.BOLD, 14));
+        gbc.gridx = 0;
+        gbc.gridy = 3;
+        mainPanel.add(emailLabel, gbc);
+
+        JTextField emailField = new JTextField(20);
+        emailField.setFont(new Font("Inter", Font.PLAIN, 14));
+        gbc.gridx = 1;
+        mainPanel.add(emailField, gbc);
+
+        // Campo Tipo de Usuario
+        JLabel userTypeLabel = new JLabel("Tipo de Usuario:");
+        userTypeLabel.setFont(new Font("Inter", Font.BOLD, 14));
+        gbc.gridx = 0;
+        gbc.gridy = 4;
+        mainPanel.add(userTypeLabel, gbc);
+
+        String[] userTypes = {"Fanático", "Corresponsal", "Administrador"};
+        JComboBox<String> userTypeCombo = new JComboBox<>(userTypes);
+        userTypeCombo.setFont(new Font("Inter", Font.PLAIN, 14));
+        gbc.gridx = 1;
+        mainPanel.add(userTypeCombo, gbc);
+
+        // Etiqueta para mensajes
+        JLabel messageLabel = new JLabel("", SwingConstants.CENTER);
+        messageLabel.setFont(new Font("Inter", Font.BOLD, 12));
+        gbc.gridx = 0;
+        gbc.gridy = 5;
+        gbc.gridwidth = 2;
+        mainPanel.add(messageLabel, gbc);
+
+        // Panel de botones
+        JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 10, 0));
+        buttonPanel.setOpaque(false);
+
+        JButton saveButton = new JButton("Guardar Cambios");
+        saveButton.setFont(new Font("Inter", Font.BOLD, 14));
+        saveButton.setBackground(new Color(34, 197, 94));
+        saveButton.setForeground(Color.WHITE);
+        saveButton.setFocusPainted(false);
+        saveButton.setBorderPainted(false);
+        saveButton.setOpaque(true);
+        saveButton.setBorder(BorderFactory.createEmptyBorder(8, 16, 8, 16));
+        saveButton.setCursor(new Cursor(Cursor.HAND_CURSOR));
+
+        JButton cancelButton = new JButton("Cancelar");
+        cancelButton.setFont(new Font("Inter", Font.BOLD, 14));
+        cancelButton.setBackground(new Color(107, 114, 128));
+        cancelButton.setForeground(Color.WHITE);
+        cancelButton.setFocusPainted(false);
+        cancelButton.setBorderPainted(false);
+        cancelButton.setOpaque(true);
+        cancelButton.setBorder(BorderFactory.createEmptyBorder(8, 16, 8, 16));
+        cancelButton.setCursor(new Cursor(Cursor.HAND_CURSOR));
+
+        buttonPanel.add(saveButton);
+        buttonPanel.add(cancelButton);
+
+        gbc.gridy = 6;
+        mainPanel.add(buttonPanel, gbc);
+
+                 // Cargar datos del usuario seleccionado
+         try {
+             User userToEdit = userManager.getUserByUsername(username);
+             usernameField.setText(userToEdit.getUsername());
+             passwordField.setText(userToEdit.getPassword());
+             emailField.setText(userToEdit.getEmail());
+             
+             // Seleccionar el tipo de usuario correcto en el combo
+             if (userToEdit instanceof Fanatic) {
+                 userTypeCombo.setSelectedItem("Fanático");
+             } else if (userToEdit instanceof Correspondent) {
+                 userTypeCombo.setSelectedItem("Corresponsal");
+             } else if (userToEdit instanceof Administrator) {
+                 userTypeCombo.setSelectedItem("Administrador");
+             }
+         } catch (UserNotFoundException ex) {
+             messageLabel.setText("Error: Usuario no encontrado");
+             messageLabel.setForeground(new Color(239, 68, 68));
+         }
+
+         // Listeners
+         saveButton.addActionListener(e -> {
+            String newUsername = usernameField.getText().trim();
+            String newPassword = new String(passwordField.getPassword());
+            String newEmail = emailField.getText().trim();
+            String selectedUserType = (String) userTypeCombo.getSelectedItem();
+
+            // Validaciones
+            if (newUsername.isEmpty() || newPassword.isEmpty() || newEmail.isEmpty()) {
+                messageLabel.setText("Todos los campos son obligatorios");
+                messageLabel.setForeground(new Color(239, 68, 68));
+                return;
+            }
+
+            if (newUsername.length() < 3) {
+                messageLabel.setText("El nombre de usuario debe tener al menos 3 caracteres");
+                messageLabel.setForeground(new Color(239, 68, 68));
+                return;
+            }
+
+            if (newPassword.length() < 6) {
+                messageLabel.setText("La contraseña debe tener al menos 6 caracteres");
+                messageLabel.setForeground(new Color(239, 68, 68));
+                return;
+            }
+
+            if (!newEmail.contains("@")) {
+                messageLabel.setText("Ingrese un email válido");
+                messageLabel.setForeground(new Color(239, 68, 68));
+                return;
+            }
+
+            try {
+                // Convertir el tipo de usuario seleccionado al formato esperado por el UserManager
+                String userTypeForManager = "";
+                switch (selectedUserType) {
+                    case "Fanático":
+                        userTypeForManager = "fanatic";
+                        break;
+                    case "Corresponsal":
+                        userTypeForManager = "correspondent";
+                        break;
+                    case "Administrador":
+                        userTypeForManager = "admin";
+                        break;
+                }
+
+                                 User updatedUser = userManager.updateUserByUsername(username, newUsername, newPassword, newEmail, userTypeForManager);
+                
+                messageLabel.setText("Usuario actualizado exitosamente: " + updatedUser.getUsername());
+                messageLabel.setForeground(new Color(34, 197, 94));
+                
+                // Recargar la tabla de usuarios
+                loadDataIntoTables();
+                
+                // Cerrar el diálogo después de un breve delay
+                Timer timer = new Timer(1500, evt -> {
+                    dialog.dispose();
+                });
+                timer.setRepeats(false);
+                timer.start();
+                
+            } catch (DuplicateUsernameException ex) {
+                messageLabel.setText("El nombre de usuario ya existe");
+                messageLabel.setForeground(new Color(239, 68, 68));
+            } catch (UserNotFoundException ex) {
+                messageLabel.setText("Usuario no encontrado: " + username);
+                messageLabel.setForeground(new Color(239, 68, 68));
+            } catch (Exception ex) {
+                messageLabel.setText("Error al actualizar usuario: " + ex.getMessage());
+                messageLabel.setForeground(new Color(239, 68, 68));
+            }
+        });
+
+        cancelButton.addActionListener(e -> dialog.dispose());
+
+        dialog.add(mainPanel, BorderLayout.CENTER);
+        dialog.setVisible(true);
+    }
+
+    private void showDeleteUserConfirmation(String username, String role) {
+
+         JDialog dialog = new JDialog(this, "Confirmar Eliminación", true);
+         dialog.setLayout(new BorderLayout());
+         dialog.setSize(420, 210);
+         dialog.setLocationRelativeTo(this);
+         dialog.setResizable(false);
+
+         JPanel mainPanel = new JPanel();
+         mainPanel.setLayout(new GridBagLayout());
+         mainPanel.setBackground(new Color(240, 242, 245));
+         mainPanel.setBorder(new EmptyBorder(20, 20, 20, 20));
+
+         GridBagConstraints gbc = new GridBagConstraints();
+         gbc.insets = new Insets(10, 10, 10, 10);
+         gbc.fill = GridBagConstraints.HORIZONTAL;
+
+         // Título con HTML para salto de línea automático
+         JLabel titleLabel = new JLabel("<html><div style='text-align:center;'>¿Está seguro de que desea eliminar al usuario <b>" + username + "</b>?</div></html>", SwingConstants.CENTER);
+         titleLabel.setFont(new Font("Inter", Font.BOLD, 18));
+         titleLabel.setForeground(new Color(52, 73, 94));
+         gbc.gridx = 0;
+         gbc.gridy = 0;
+         gbc.gridwidth = 2;
+         mainPanel.add(titleLabel, gbc);
+
+        // Botones de confirmación
+        JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 10, 0));
+        buttonPanel.setOpaque(false);
+
+        JButton confirmButton = new JButton("Sí, Eliminar");
+        confirmButton.setFont(new Font("Inter", Font.BOLD, 14));
+        confirmButton.setBackground(new Color(239, 68, 68));
+        confirmButton.setForeground(Color.WHITE);
+        confirmButton.setFocusPainted(false);
+        confirmButton.setBorderPainted(false);
+        confirmButton.setOpaque(true);
+        confirmButton.setBorder(BorderFactory.createEmptyBorder(8, 16, 8, 16));
+        confirmButton.setCursor(new Cursor(Cursor.HAND_CURSOR));
+
+        JButton cancelButton = new JButton("Cancelar");
+        cancelButton.setFont(new Font("Inter", Font.BOLD, 14));
+        cancelButton.setBackground(new Color(107, 114, 128));
+        cancelButton.setForeground(Color.WHITE);
+        cancelButton.setFocusPainted(false);
+        cancelButton.setBorderPainted(false);
+        cancelButton.setOpaque(true);
+        cancelButton.setBorder(BorderFactory.createEmptyBorder(8, 16, 8, 16));
+        cancelButton.setCursor(new Cursor(Cursor.HAND_CURSOR));
+
+        buttonPanel.add(confirmButton);
+        buttonPanel.add(cancelButton);
+
+        gbc.gridy = 1;
+        mainPanel.add(buttonPanel, gbc);
+
+        // Listeners
+        confirmButton.addActionListener(e -> {
+            try {
+                userManager.deleteUserByUsername(username);
+                JOptionPane.showMessageDialog(this, 
+                    "Usuario " + username + " eliminado exitosamente.", 
+                    "Eliminación Exitosa", 
+                    JOptionPane.INFORMATION_MESSAGE);
+                loadDataIntoTables();
+                dialog.dispose();
+            } catch (UserNotFoundException ex) {
+                JOptionPane.showMessageDialog(this, 
+                    "Error al eliminar usuario: " + ex.getMessage(), 
+                    "Error de Eliminación", 
+                    JOptionPane.ERROR_MESSAGE);
+            } catch (Exception ex) {
+                JOptionPane.showMessageDialog(this, 
+                    "Error inesperado al eliminar usuario: " + ex.getMessage(), 
+                    "Error de Eliminación", 
+                    JOptionPane.ERROR_MESSAGE);
+            }
+        });
+
+        cancelButton.addActionListener(e -> dialog.dispose());
+
+        dialog.add(mainPanel, BorderLayout.CENTER);
+        dialog.setVisible(true);
     }
 
     private JButton createStyledButton(String text, Color bgColor) {

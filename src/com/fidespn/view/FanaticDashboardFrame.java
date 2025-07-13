@@ -16,6 +16,7 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.text.SimpleDateFormat;
 import java.util.List;
+import java.util.ArrayList; // Necesario para crear nuevas listas temporales
 
 public class FanaticDashboardFrame extends JFrame {
     private UserManager userManager;
@@ -141,10 +142,19 @@ public class FanaticDashboardFrame extends JFrame {
         viewDetailsBtn.addActionListener(e -> {
             int selectedRow = matchesTable.getSelectedRow();
             if (selectedRow != -1) {
-                // Aquí iría la lógica para abrir la pantalla de "Partido en Vivo"
-                // Necesitaríamos obtener el ID del partido de la fila seleccionada
-                // y pasarla a la nueva ventana. Por ahora, un mensaje.
-                JOptionPane.showMessageDialog(this, "Funcionalidad 'Ver Detalles' no implementada aún.", "Detalles del Partido", JOptionPane.INFORMATION_MESSAGE);
+                // Obtener el ID del partido de la fila seleccionada (asumiendo que el primer elemento es el nombre)
+                // En un sistema real, guardaríamos el ID del partido en una columna oculta o en el modelo.
+                // Por ahora, para el prototipo, podemos obtener el nombre y buscar el partido.
+                String matchName = (String) matchesTableModel.getValueAt(selectedRow, 0);
+                Match selectedMatch = findMatchByName(matchName); // Método auxiliar para encontrar el partido
+
+                if (selectedMatch != null) {
+                    // Abrir la pantalla de Partido en Vivo
+                    new LiveMatchFrame(userManager, matchManager, currentFanatic, selectedMatch).setVisible(true);
+                    this.dispose(); // Cerrar el dashboard del fanático
+                } else {
+                    JOptionPane.showMessageDialog(this, "No se pudo encontrar el partido seleccionado.", "Error", JOptionPane.ERROR_MESSAGE);
+                }
             } else {
                 JOptionPane.showMessageDialog(this, "Por favor, seleccione un partido de la tabla.", "Advertencia", JOptionPane.WARNING_MESSAGE);
             }
@@ -243,6 +253,17 @@ public class FanaticDashboardFrame extends JFrame {
             String status = match.getStatus().substring(0, 1).toUpperCase() + match.getStatus().substring(1);
             matchesTableModel.addRow(new Object[]{matchName, dateTime, status});
         }
+    }
+
+    // Método auxiliar para obtener un partido por su nombre (para el botón "Ver Detalles")
+    private Match findMatchByName(String matchName) {
+        for (Match match : matchManager.getAllMatches()) {
+            String currentMatchName = match.getHomeTeam().getName() + " vs " + match.getAwayTeam().getName();
+            if (currentMatchName.equals(matchName)) {
+                return match;
+            }
+        }
+        return null;
     }
 
     // Método auxiliar para obtener emojis de banderas (ejemplo, no exhaustivo)

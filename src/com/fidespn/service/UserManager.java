@@ -105,6 +105,51 @@ public class UserManager {
         System.out.println("Usuario " + user.getUsername() + " actualizado.");
     }
 
+    public User updateUserByUsername(String oldUsername, String newUsername, String newPassword, String newEmail, String newUserType) throws UserNotFoundException, DuplicateUsernameException {
+        // Verificar si el nuevo username ya existe (si es diferente al actual)
+        if (!oldUsername.equals(newUsername) && usersByUsername.containsKey(newUsername)) {
+            throw new DuplicateUsernameException("El nombre de usuario '" + newUsername + "' ya está en uso.");
+        }
+
+        // Buscar el usuario actual
+        User currentUser = usersByUsername.get(oldUsername);
+        if (currentUser == null) {
+            throw new UserNotFoundException("Usuario no encontrado: " + oldUsername);
+        }
+
+        // Crear un nuevo usuario con los datos actualizados
+        User updatedUser;
+        switch (newUserType.toLowerCase()) {
+            case "fanatic":
+                updatedUser = new Fanatic(currentUser.getUserId(), newUsername, newPassword, newEmail);
+                break;
+            case "correspondent":
+                updatedUser = new Correspondent(currentUser.getUserId(), newUsername, newPassword, newEmail);
+                break;
+            case "admin":
+                updatedUser = new Administrator(currentUser.getUserId(), newUsername, newPassword, newEmail, 1);
+                break;
+            default:
+                throw new IllegalArgumentException("Tipo de usuario no válido: " + newUserType);
+        }
+
+        // Actualizar en las listas
+        usersByUsername.remove(oldUsername);
+        usersByUsername.put(newUsername, updatedUser);
+        
+        // Actualizar en la lista de todos los usuarios
+        for (int i = 0; i < allUsers.size(); i++) {
+            if (allUsers.get(i).getUserId().equals(currentUser.getUserId())) {
+                allUsers.set(i, updatedUser);
+                break;
+            }
+        }
+
+        saveUsers();
+        System.out.println("Usuario actualizado: " + oldUsername + " -> " + newUsername);
+        return updatedUser;
+    }
+
     public void deleteUser(String userId) throws UserNotFoundException {
         User userToRemove = null;
         for (User user : allUsers) {
@@ -122,6 +167,18 @@ public class UserManager {
         } else {
             throw new UserNotFoundException("Usuario con ID " + userId + " no encontrado para eliminar.");
         }
+    }
+
+    public void deleteUserByUsername(String username) throws UserNotFoundException {
+        User userToRemove = usersByUsername.get(username);
+        if (userToRemove == null) {
+            throw new UserNotFoundException("Usuario con nombre de usuario " + username + " no encontrado para eliminar.");
+        }
+
+        allUsers.remove(userToRemove);
+        usersByUsername.remove(username);
+        saveUsers();
+        System.out.println("Usuario " + username + " eliminado.");
     }
 
     private void saveUsers() {
