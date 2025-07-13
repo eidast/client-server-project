@@ -112,7 +112,7 @@ public class LiveMatchFrame extends JFrame {
         JButton backButton = createStyledButton("Volver al Dashboard", new Color(107, 114, 128));
         backButton.addActionListener(e -> {
             this.dispose();
-            new FanaticDashboardFrame(userManager, currentFanatic).setVisible(true);
+            new FanaticDashboardFrame(userManager, matchManager, currentFanatic).setVisible(true);
         });
 
         JButton refreshButton = createStyledButton("Actualizar", new Color(34, 197, 94));

@@ -30,16 +30,14 @@ public class AdminDashboardFrame extends JFrame {
     private DefaultTableModel usersTableModel;
     private JTable usersTable;
 
-    public AdminDashboardFrame(UserManager userManager) {
+    public AdminDashboardFrame(UserManager userManager, MatchManager matchManager) {
         this.userManager = userManager;
-        this.matchManager = new MatchManager();
-
+        this.matchManager = matchManager;
         setTitle("FidESPN United 2026 - Panel de Administrador");
         setSize(1000, 700);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setLocationRelativeTo(null);
         setResizable(true);
-
         initComponents();
         loadDataIntoTables();
     }

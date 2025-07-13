@@ -27,21 +27,18 @@ public class FanaticDashboardFrame extends JFrame {
     private DefaultTableModel matchesTableModel;
     private JTable matchesTable;
 
-    public FanaticDashboardFrame(UserManager userManager, User currentUser) {
+    public FanaticDashboardFrame(UserManager userManager, MatchManager matchManager, User currentUser) {
         this.userManager = userManager;
-        this.matchManager = new MatchManager(); // Instancia del gestor de partidos
-        // Es seguro castear aquí porque LoginFrame ya verifica que sea una instancia de Fanatic
-        this.currentFanatic = (Fanatic) currentUser; 
-
+        this.matchManager = matchManager; // Usar la instancia compartida
+        this.currentFanatic = (Fanatic) currentUser;
         setTitle("FidESPN United 2026 - Panel de Fanático");
-        setSize(900, 700); // Tamaño adecuado para el contenido
+        setSize(900, 700);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setLocationRelativeTo(null);
         setResizable(true);
-
         initComponents();
-        loadFavoriteTeams(); // Cargar equipos favoritos
-        loadFeaturedMatches(); // Cargar partidos destacados
+        loadFavoriteTeams();
+        loadFeaturedMatches();
     }
 
     private void initComponents() {
@@ -142,16 +139,11 @@ public class FanaticDashboardFrame extends JFrame {
         viewDetailsBtn.addActionListener(e -> {
             int selectedRow = matchesTable.getSelectedRow();
             if (selectedRow != -1) {
-                // Obtener el ID del partido de la fila seleccionada (asumiendo que el primer elemento es el nombre)
-                // En un sistema real, guardaríamos el ID del partido en una columna oculta o en el modelo.
-                // Por ahora, para el prototipo, podemos obtener el nombre y buscar el partido.
                 String matchName = (String) matchesTableModel.getValueAt(selectedRow, 0);
-                Match selectedMatch = findMatchByName(matchName); // Método auxiliar para encontrar el partido
-
+                Match selectedMatch = findMatchByName(matchName);
                 if (selectedMatch != null) {
-                    // Abrir la pantalla de Partido en Vivo
                     new LiveMatchFrame(userManager, matchManager, currentFanatic, selectedMatch).setVisible(true);
-                    this.dispose(); // Cerrar el dashboard del fanático
+                    this.dispose();
                 } else {
                     JOptionPane.showMessageDialog(this, "No se pudo encontrar el partido seleccionado.", "Error", JOptionPane.ERROR_MESSAGE);
                 }

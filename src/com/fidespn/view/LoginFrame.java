@@ -7,6 +7,7 @@ import com.fidespn.model.Fanatic;
 import com.fidespn.service.UserManager;
 import com.fidespn.service.exceptions.InvalidCredentialsException;
 import com.fidespn.service.exceptions.UserNotFoundException;
+import com.fidespn.service.MatchManager;
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
@@ -18,6 +19,7 @@ import java.awt.event.MouseEvent;
 
 public class LoginFrame extends JFrame {
     private UserManager userManager;
+    private MatchManager matchManager;
 
     private JTextField usernameField;
     private JPasswordField passwordField;
@@ -28,6 +30,7 @@ public class LoginFrame extends JFrame {
 
     public LoginFrame(UserManager userManager) {
         this.userManager = userManager;
+        this.matchManager = new MatchManager();
         setTitle("FidESPN United 2026 - Iniciar Sesión");
         setSize(450, 400);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
@@ -193,11 +196,11 @@ public class LoginFrame extends JFrame {
             this.dispose();
 
             if (loggedInUser instanceof Administrator) {
-                new AdminDashboardFrame(userManager).setVisible(true);
+                new AdminDashboardFrame(userManager, matchManager).setVisible(true);
             } else if (loggedInUser instanceof Correspondent) {
-                new CorrespondentDashboardFrame(userManager, loggedInUser).setVisible(true);
+                new CorrespondentDashboardFrame(userManager, matchManager, loggedInUser).setVisible(true);
             } else if (loggedInUser instanceof Fanatic) {
-                new FanaticDashboardFrame(userManager, loggedInUser).setVisible(true);
+                new FanaticDashboardFrame(userManager, matchManager, loggedInUser).setVisible(true);
             } else {
                 JOptionPane.showMessageDialog(this, "Tipo de usuario no reconocido. Contacte al soporte.", "Error de Inicio de Sesión", JOptionPane.ERROR_MESSAGE);
                 new LoginFrame(userManager).setVisible(true);
