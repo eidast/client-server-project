@@ -51,6 +51,17 @@ public class MatchManager {
                 addTeam(new Team("JPN", "Japón", "Japón", "url_jpn.png"));
                 addTeam(new Team("GER", "Alemania", "Alemania", "url_ger.png"));
                 addTeam(new Team("FRA", "Francia", "Francia", "url_fra.png"));
+                addTeam(new Team("ESP", "España", "España", "url_esp.png"));
+                addTeam(new Team("SEN", "Senegal", "Senegal", "url_sen.png"));
+                addTeam(new Team("SRB", "Serbia", "Serbia", "url_srb.png"));
+                addTeam(new Team("QAT", "Qatar", "Qatar", "url_qat.png"));
+                addTeam(new Team("ECU", "Ecuador", "Ecuador", "url_ecu.png"));
+                addTeam(new Team("DEN", "Dinamarca", "Dinamarca", "url_den.png"));
+                addTeam(new Team("ENG", "Inglaterra", "Inglaterra", "url_eng.png"));
+                addTeam(new Team("NED", "Países Bajos", "Países Bajos", "url_ned.png"));
+                addTeam(new Team("POR", "Portugal", "Portugal", "url_por.png"));
+                addTeam(new Team("ITA", "Italia", "Italia", "url_ita.png"));
+                addTeam(new Team("BEL", "Bélgica", "Bélgica", "url_bel.png"));
                 saveData(); // <--- CORRECCIÓN: Llamar a saveData() para persistir los equipos por defecto
             } catch (Exception e) {
                 System.err.println("Error al inicializar equipos por defecto: " + e.getMessage());

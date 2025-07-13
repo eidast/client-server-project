@@ -7,6 +7,7 @@ import com.fidespn.model.User;
 import com.fidespn.service.MatchManager;
 import com.fidespn.service.UserManager;
 import com.fidespn.service.exceptions.TeamNotFoundException;
+import com.fidespn.view.ManageFavoriteTeamsFrame;
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
@@ -86,7 +87,7 @@ public class FanaticDashboardFrame extends JFrame {
         manageButtonPanel.setOpaque(false);
         JButton manageTeamsBtn = createStyledButton("Gestionar", new Color(156, 163, 175)); // bg-gray-200, text-gray-700
         manageTeamsBtn.addActionListener(e -> {
-            JOptionPane.showMessageDialog(this, "Funcionalidad de gestión de equipos favoritos no implementada aún.", "Gestionar Equipos", JOptionPane.INFORMATION_MESSAGE);
+            new ManageFavoriteTeamsFrame(userManager, matchManager, currentFanatic, this).setVisible(true);
         });
         manageButtonPanel.add(manageTeamsBtn);
         favoriteTeamsSectionPanel.add(manageButtonPanel, BorderLayout.SOUTH);
@@ -258,6 +259,11 @@ public class FanaticDashboardFrame extends JFrame {
         return null;
     }
 
+    // Método público para refrescar los equipos favoritos (llamado desde ManageFavoriteTeamsFrame)
+    public void refreshFavoriteTeams() {
+        loadFavoriteTeams();
+    }
+
     // Método auxiliar para obtener emojis de banderas (ejemplo, no exhaustivo)
     private String getFlagEmoji(String country) {
         switch (country.toLowerCase()) {
@@ -277,6 +283,11 @@ public class FanaticDashboardFrame extends JFrame {
             case "qatar": return "🇶🇦";
             case "ecuador": return "🇪🇨";
             case "dinamarca": return "🇩🇰";
+            case "inglaterra": return "🇬🇧";
+            case "países bajos": return "🇳🇱";
+            case "portugal": return "🇵🇹";
+            case "italia": return "🇮🇹";
+            case "bélgica": return "🇧🇪";
             default: return "🏳️"; // Bandera genérica
         }
     }
