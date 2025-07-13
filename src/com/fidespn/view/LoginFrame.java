@@ -25,8 +25,6 @@ public class LoginFrame extends JFrame {
     private JPasswordField passwordField;
     private JLabel messageLabel;
     private JButton loginButton;
-    private JLabel registerLink; // <--- CORRECCIÓN: Declarar como variable de instancia
-    private JLabel forgotPasswordLink; // <--- CORRECCIÓN: Declarar como variable de instancia
 
     public LoginFrame(UserManager userManager) {
         this.userManager = userManager;
@@ -117,26 +115,6 @@ public class LoginFrame extends JFrame {
         gbc.fill = GridBagConstraints.NONE; // No rellenar, usar tamaño preferido
         panel.add(loginButton, gbc);
 
-        // Enlace "Regístrate aquí"
-        registerLink = new JLabel("<html>¿No tienes cuenta? <u style='color:#3b82f6;'>Regístrate aquí</u></html>", SwingConstants.CENTER); // <--- CORRECCIÓN: Asignar a variable de instancia
-        registerLink.setFont(new Font("Inter", Font.PLAIN, 13));
-        registerLink.setForeground(new Color(59, 130, 246)); // text-blue-600
-        registerLink.setCursor(new Cursor(Cursor.HAND_CURSOR));
-        registerLink.setHorizontalAlignment(SwingConstants.CENTER);
-        gbc.gridy = 6;
-        gbc.insets = new Insets(5, 10, 2, 10);
-        panel.add(registerLink, gbc);
-
-        // Enlace "¿Olvidaste tu contraseña?"
-        forgotPasswordLink = new JLabel("<html><u style='color:#3b82f6;'>¿Olvidaste tu contraseña?</u></html>", SwingConstants.CENTER); // <--- CORRECCIÓN: Asignar a variable de instancia
-        forgotPasswordLink.setFont(new Font("Inter", Font.PLAIN, 13));
-        forgotPasswordLink.setForeground(new Color(59, 130, 246)); // text-blue-600
-        forgotPasswordLink.setCursor(new Cursor(Cursor.HAND_CURSOR));
-        forgotPasswordLink.setHorizontalAlignment(SwingConstants.CENTER);
-        gbc.gridy = 7;
-        gbc.insets = new Insets(2, 10, 10, 10);
-        panel.add(forgotPasswordLink, gbc);
-
         add(panel);
     }
 
@@ -161,21 +139,6 @@ public class LoginFrame extends JFrame {
             }
         });
 
-        // Listener para el enlace "Regístrate aquí"
-        registerLink.addMouseListener(new MouseAdapter() { // <--- CORRECCIÓN: Acceso directo a la variable
-            @Override
-            public void mouseClicked(MouseEvent e) {
-                JOptionPane.showMessageDialog(LoginFrame.this, "Funcionalidad de registro no implementada aún.", "Registro", JOptionPane.INFORMATION_MESSAGE);
-            }
-        });
-
-        // Listener para el enlace "¿Olvidaste tu contraseña?"
-        forgotPasswordLink.addMouseListener(new MouseAdapter() { // <--- CORRECCIÓN: Acceso directo a la variable
-            @Override
-            public void mouseClicked(MouseEvent e) {
-                JOptionPane.showMessageDialog(LoginFrame.this, "Funcionalidad de recuperación de contraseña no implementada aún.", "Recuperar Contraseña", JOptionPane.INFORMATION_MESSAGE);
-            }
-        });
     }
 
     private void performLogin() {
