@@ -197,7 +197,7 @@ public class LoginFrame extends JFrame {
             } else if (loggedInUser instanceof Correspondent) {
                 new CorrespondentDashboardFrame(userManager, loggedInUser).setVisible(true);
             } else if (loggedInUser instanceof Fanatic) {
-                new FanaticDashboardFrame(userManager).setVisible(true);
+                new FanaticDashboardFrame(userManager, loggedInUser).setVisible(true);
             } else {
                 JOptionPane.showMessageDialog(this, "Tipo de usuario no reconocido. Contacte al soporte.", "Error de Inicio de Sesión", JOptionPane.ERROR_MESSAGE);
                 new LoginFrame(userManager).setVisible(true);
