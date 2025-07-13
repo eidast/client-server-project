@@ -229,6 +229,15 @@ public class MatchManager {
         return message;
     }
 
+    /**
+     * Elimina un partido por su ID y guarda los cambios.
+     */
+    public void deleteMatchById(String matchId) {
+        matchesById.remove(matchId);
+        chatsByMatchId.remove(matchId);
+        saveData();
+    }
+
     // --- Métodos para Serialización (Persistencia) ---
     private void saveData() {
         try (ObjectOutputStream oosMatches = new ObjectOutputStream(new FileOutputStream(MATCHES_FILE));
