@@ -2,9 +2,9 @@
 
 ## Resumen
 
-FidESPN United 2026 es una aplicación de gestión de partidos de fútbol desarrollada en Java Swing para el Mundial United 2026. El sistema permite a diferentes tipos de usuarios (Administradores, Corresponsales y Fanáticos) interactuar con partidos en tiempo real, incluyendo reportes de eventos, chat en vivo y gestión de equipos favoritos.
+FidESPN United 2026 es una aplicación de gestión de partidos de fútbol desarrollada en Java Swing para el Mundial United 2026. El sistema permite a diferentes tipos de usuarios (Administradores, Corresponsales y Fanáticos) interactuar con partidos en tiempo real, incluyendo reportes de eventos, chat en vivo, gestión de equipos favoritos y seguimiento de partidos en vivo.
 
-La aplicación utiliza una arquitectura MVC (Model-View-Controller) con persistencia de datos mediante serialización Java, proporcionando una experiencia completa para la gestión y seguimiento de partidos de fútbol.
+La aplicación utiliza una arquitectura MVC (Model-View-Controller) con persistencia de datos mediante serialización Java, proporcionando una experiencia completa para la gestión y seguimiento de partidos de fútbol con una interfaz moderna y responsive.
 
 ## Requisitos
 
@@ -18,6 +18,7 @@ La aplicación utiliza una arquitectura MVC (Model-View-Controller) con persiste
 - **Java Swing**: Incluido en el JDK estándar
 - **Java Serialization**: Para persistencia de datos
 - **Java Collections Framework**: Para estructuras de datos
+- **Java Timer**: Para actualizaciones en tiempo real
 
 ## Cómo Ejecutar
 
@@ -41,63 +42,93 @@ La aplicación utiliza una arquitectura MVC (Model-View-Controller) con persiste
 
 ### Usuarios de Prueba
 
-La aplicación incluye usuarios de demostración preconfigurados:
+La aplicación incluye usuarios de demostración preconfigurados que se crean automáticamente en la primera ejecución:
 
-| Usuario | Contraseña | Rol |
-|---------|------------|-----|
-| `admin` | `admin123` | Administrador |
-| `corresponsal1` | `pass123` | Corresponsal |
-| `fanatico1` | `pass123` | Fanático |
-| `fanatico2` | `pass123` | Fanático |
+| Usuario | Contraseña | Rol | Funcionalidades |
+|---------|------------|-----|-----------------|
+| `admin` | `admin123` | Administrador | Gestión completa del sistema |
+| `corresponsal1` | `pass123` | Corresponsal | Reportes en tiempo real |
+| `fanatico1` | `pass123` | Fanático | Seguimiento de equipos favoritos |
+| `fanatico2` | `pass123` | Fanático | Chat en vivo y partidos |
 
 ## Características Implementadas
 
 ### ✅ Funcionalidades Completadas
 
-#### **Sistema de Autenticación**
+#### **Sistema de Autenticación **
 - Login con validación de credenciales
-- Manejo de diferentes tipos de usuario
-- Interfaz gráfica moderna y responsive
+- Manejo de diferentes tipos de usuario con roles específicos
+- Interfaz gráfica moderna con diseño responsive
+- Manejo de excepciones personalizadas (InvalidCredentialsException, UserNotFoundException)
 
-#### **Gestión de Usuarios**
+#### **Gestión de Usuarios Completa**
 - **Administrador**: Control total del sistema, gestión de usuarios y partidos
+  - Dashboard completo con estadísticas
+  - Gestión de usuarios (crear, editar, eliminar)
+  - Supervisión de partidos y eventos
 - **Corresponsal**: Reportes en tiempo real, gestión de eventos de partido
+  - Dashboard especializado para reportes
+  - Gestión de eventos de partido (goles, tarjetas, etc.)
+  - Actualización de marcadores en tiempo real
 - **Fanático**: Seguimiento de equipos favoritos, chat en vivo
+  - Dashboard personalizado con equipos favoritos
+  - Gestión de equipos favoritos
+  - Visualización de partidos en vivo
 
-#### **Gestión de Partidos**
-- Creación y gestión de partidos
+#### **Gestión de Partidos Avanzada**
+- Creación y gestión completa de partidos
 - Actualización de marcadores en tiempo real
-- Sistema de eventos (goles, tarjetas, etc.)
+- Sistema de eventos detallado (goles, tarjetas, faltas, etc.)
 - Estados de partido (programado, en vivo, finalizado)
+- Asignación de corresponsales a partidos
+- Alineaciones de equipos
 
-#### **Sistema de Equipos**
-- Gestión de equipos participantes
+#### **Sistema de Equipos Completo**
+- Gestión de 20+ equipos participantes del Mundial 2026
 - Asignación de equipos favoritos a fanáticos
-- Información detallada de equipos
+- Información detallada de equipos con banderas
+- Sistema de gestión de equipos favoritos con interfaz gráfica
 
 #### **Chat en Tiempo Real**
 - Chat específico para cada partido
-- Mensajería entre usuarios
-- Persistencia de conversaciones
+- Mensajería entre usuarios con persistencia
+- Interfaz de chat integrada en los dashboards
+- Historial de mensajes por partido
 
-#### **Persistencia de Datos**
+#### **Sistema de Partidos en Vivo**
+- Ventana dedicada para seguimiento de partidos en vivo
+- Actualización automática cada 30 segundos
+- Visualización de eventos en tiempo real
+- Marcadores actualizados dinámicamente
+
+#### **Persistencia de Datos **
 - Serialización automática de datos
 - Archivos de datos: `users.ser`, `matches.ser`, `teams.ser`, `chats.ser`
 - Carga automática al iniciar la aplicación
+- Manejo de errores en la persistencia
+
+#### **Interfaz de Usuario Moderna**
+- Diseño responsive con colores modernos
+- Tipografía Inter para mejor legibilidad
+- Iconografía con emojis de banderas
+- Navegación intuitiva entre ventanas
+- Botones estilizados y efectos visuales
 
 ### 🔄 Funcionalidades en Desarrollo
 
-- Registro de nuevos usuarios
+- Registro de nuevos usuarios desde la interfaz
 - Recuperación de contraseñas
 - Notificaciones push
-- Estadísticas avanzadas
-- Exportación de reportes
+- Estadísticas avanzadas de jugadores
+- Exportación de reportes en PDF
+- Sistema de notificaciones en tiempo real
 
 ## Estructura de Carpetas
 
 ```
 Semana9/
 ├── .gitignore                 # Archivo de exclusión para Git
+├── LICENSE.md                 # Licencia del proyecto
 ├── README.md                  # Documentación del proyecto
 ├── src/                       # Código fuente principal
 │   └── com/
@@ -128,7 +159,9 @@ Semana9/
 │               ├── AdminDashboardFrame.java
 │               ├── CorrespondentDashboardFrame.java
 │               ├── FanaticDashboardFrame.java
-│               └── LoginFrame.java
+│               ├── LiveMatchFrame.java
+│               ├── LoginFrame.java
+│               └── ManageFavoriteTeamsFrame.java
 ├── chats.ser                  # Datos de chats (generado automáticamente)
 ├── matches.ser                # Datos de partidos (generado automáticamente)
 ├── teams.ser                  # Datos de equipos (generado automáticamente)
@@ -138,37 +171,97 @@ Semana9/
 ### Descripción de Paquetes
 
 #### **`main`**
-Contiene la clase principal `MainApp.java` que inicia la aplicación y configura los datos de prueba.
+Contiene la clase principal `MainApp.java` que:
+- Inicia la aplicación en el Event Dispatch Thread (EDT)
+- Configura los managers de usuarios y partidos
+- Crea usuarios de prueba automáticamente
+- Inicializa datos de demostración
 
 #### **`model`**
 Define todas las entidades del sistema:
 - **User**: Clase abstracta base para todos los usuarios
 - **Administrator/Correspondent/Fanatic**: Implementaciones específicas de usuario
-- **Match**: Representa un partido con todos sus datos
-- **Team**: Información de equipos participantes
-- **Chat/ChatMessage**: Sistema de mensajería
-- **MatchEvent**: Eventos durante un partido (goles, tarjetas)
+- **Match**: Representa un partido con todos sus datos y eventos
+- **Team**: Información de equipos participantes con banderas
+- **Chat/ChatMessage**: Sistema de mensajería en tiempo real
+- **MatchEvent**: Eventos durante un partido (goles, tarjetas, faltas)
+- **Player**: Información de jugadores
 
 #### **`service`**
 Contiene la lógica de negocio:
-- **UserManager**: Gestión de usuarios, autenticación, registro
-- **MatchManager**: Gestión de partidos, equipos, eventos y chats
-- **exceptions**: Excepciones personalizadas para manejo de errores
+- **UserManager**: Gestión completa de usuarios, autenticación, registro, actualización
+- **MatchManager**: Gestión de partidos, equipos, eventos, chats y persistencia
+- **exceptions**: Excepciones personalizadas para manejo de errores específicos
 
 #### **`view`**
-Interfaces gráficas de usuario:
-- **LoginFrame**: Pantalla de inicio de sesión
-- **AdminDashboardFrame**: Dashboard para administradores
-- **CorrespondentDashboardFrame**: Dashboard para corresponsales
-- **FanaticDashboardFrame**: Dashboard para fanáticos
+Interfaces gráficas de usuario modernas:
+- **LoginFrame**: Pantalla de inicio de sesión con diseño moderno
+- **AdminDashboardFrame**: Dashboard completo para administradores
+- **CorrespondentDashboardFrame**: Dashboard especializado para corresponsales
+- **FanaticDashboardFrame**: Dashboard personalizado para fanáticos
+- **LiveMatchFrame**: Ventana para seguimiento de partidos en vivo
+- **ManageFavoriteTeamsFrame**: Gestión de equipos favoritos
+
+## Características Técnicas
+
+### **Arquitectura MVC**
+- **Model**: Entidades de datos en el paquete `model`
+- **View**: Interfaces gráficas en el paquete `view`
+- **Controller**: Lógica de negocio en el paquete `service`
+
+### **Persistencia de Datos**
+- Serialización Java para almacenamiento local
+- Archivos `.ser` para cada tipo de entidad
+- Carga automática al inicio de la aplicación
+- Guardado automático tras cada operación
+
+### **Manejo de Excepciones**
+- Excepciones personalizadas para cada tipo de error
+- Validación de datos de entrada
+- Mensajes de error informativos para el usuario
+
+### **Interfaz de Usuario**
+- Diseño moderno con colores profesionales
+- Tipografía Inter para mejor legibilidad
+- Componentes Swing personalizados
+- Navegación intuitiva entre ventanas
+
+### **Tiempo Real**
+- Timer para actualizaciones automáticas
+- Chat en vivo por partido
+- Actualización de marcadores dinámica
+- Eventos de partido en tiempo real
 
 ## Tecnologías Utilizadas
 
 - **Java 8+**: Lenguaje de programación principal
 - **Java Swing**: Framework para interfaz gráfica
 - **Java Serialization**: Persistencia de datos
+- **Java Timer**: Actualizaciones en tiempo real
 - **Arquitectura MVC**: Separación de responsabilidades
 - **Git**: Control de versiones
+
+## Flujo de Uso
+
+### **Para Administradores:**
+1. Iniciar sesión con credenciales de administrador
+2. Acceder al dashboard de administración
+3. Gestionar usuarios, partidos y equipos
+4. Supervisar eventos y reportes
+
+### **Para Corresponsales:**
+1. Iniciar sesión con credenciales de corresponsal
+2. Acceder al dashboard de corresponsal
+3. Crear y gestionar partidos
+4. Reportar eventos en tiempo real
+5. Actualizar marcadores y estadísticas
+
+### **Para Fanáticos:**
+1. Iniciar sesión con credenciales de fanático
+2. Acceder al dashboard personalizado
+3. Gestionar equipos favoritos
+4. Ver partidos en vivo
+5. Participar en chats de partido
 
 ## Contribución
 
@@ -182,8 +275,14 @@ Para contribuir al proyecto:
 
 ## Licencia
 
-Este proyecto está bajo la Licencia MIT. Ver el archivo `LICENSE` para más detalles.
+Este proyecto está bajo la Licencia MIT. Ver el archivo `LICENSE.md` para más detalles.
 
 ## Contacto
 
-Para preguntas o soporte, contacta al equipo de desarrollo de FidESPN United 2026. 
+Para preguntas o soporte, contacta al equipo de desarrollo de FidESPN United 2026.
+
+---
+
+**Versión**: 2.0  
+**Última actualización**: Julio 2025  
+**Estado**: Funcionalidades principales completadas 
