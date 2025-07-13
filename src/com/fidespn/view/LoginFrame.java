@@ -195,7 +195,7 @@ public class LoginFrame extends JFrame {
             if (loggedInUser instanceof Administrator) {
                 new AdminDashboardFrame(userManager).setVisible(true);
             } else if (loggedInUser instanceof Correspondent) {
-                new CorrespondentDashboardFrame(userManager).setVisible(true);
+                new CorrespondentDashboardFrame(userManager, loggedInUser).setVisible(true);
             } else if (loggedInUser instanceof Fanatic) {
                 new FanaticDashboardFrame(userManager).setVisible(true);
             } else {
