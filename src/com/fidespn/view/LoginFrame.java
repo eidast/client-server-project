@@ -8,6 +8,7 @@ import com.fidespn.service.UserManager;
 import com.fidespn.service.exceptions.InvalidCredentialsException;
 import com.fidespn.service.exceptions.UserNotFoundException;
 import com.fidespn.service.MatchManager;
+import com.fidespn.client.adapters.SocketUserClient;
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
@@ -20,6 +21,8 @@ import java.awt.event.MouseEvent;
 public class LoginFrame extends JFrame {
     private UserManager userManager;
     private MatchManager matchManager;
+    private boolean useServer = false; // Toggle: local managers vs backend socket
+    private SocketUserClient socketUserClient;
 
     private JTextField usernameField;
     private JPasswordField passwordField;
@@ -188,7 +191,15 @@ public class LoginFrame extends JFrame {
         }
 
         try {
-            User loggedInUser = userManager.loginUser(username, password);
+            User loggedInUser;
+            if (useServer) {
+                if (socketUserClient == null) socketUserClient = new SocketUserClient("127.0.0.1", 5432);
+                String token = socketUserClient.login(username, password);
+                // Local echo user object for routing by role
+                loggedInUser = userManager.getUserByUsername(username);
+            } else {
+                loggedInUser = userManager.loginUser(username, password);
+            }
             messageLabel.setText("¡Inicio de sesión exitoso! Redirigiendo...");
             messageLabel.setForeground(new Color(34, 197, 94)); // text-green-500
 

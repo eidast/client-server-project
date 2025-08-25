@@ -3,6 +3,7 @@ package com.fidespn.view;
 import com.fidespn.service.UserManager;
 import com.fidespn.service.exceptions.InvalidCredentialsException;
 import com.fidespn.service.exceptions.UserNotFoundException;
+import com.fidespn.client.adapters.SocketUserClient;
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
@@ -13,6 +14,8 @@ import java.awt.*;
  */
 public class ForgotPasswordDialog extends JDialog {
     private final UserManager userManager;
+    private boolean useServer = false; // Toggle for backend usage
+    private SocketUserClient socketUserClient;
 
     private JTextField usernameField;
     private JTextField emailField;
@@ -145,7 +148,12 @@ public class ForgotPasswordDialog extends JDialog {
         }
 
         try {
-            userManager.resetPasswordByUsernameAndEmail(username, email, newPass);
+            if (useServer) {
+                if (socketUserClient == null) socketUserClient = new SocketUserClient("127.0.0.1", 5432);
+                socketUserClient.resetPassword(username, email, newPass);
+            } else {
+                userManager.resetPasswordByUsernameAndEmail(username, email, newPass);
+            }
             setSuccess("Contraseña actualizada correctamente");
             Timer t = new Timer(1000, evt -> dispose());
             t.setRepeats(false);

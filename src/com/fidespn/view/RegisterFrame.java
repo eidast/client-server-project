@@ -2,6 +2,7 @@ package com.fidespn.view;
 
 import com.fidespn.service.UserManager;
 import com.fidespn.service.exceptions.DuplicateUsernameException;
+import com.fidespn.client.adapters.SocketUserClient;
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
@@ -12,6 +13,8 @@ import java.awt.*;
  */
 public class RegisterFrame extends JFrame {
     private final UserManager userManager;
+    private boolean useServer = false; // Toggle for backend usage
+    private SocketUserClient socketUserClient;
 
     private JTextField usernameField;
     private JTextField emailField;
@@ -156,7 +159,12 @@ public class RegisterFrame extends JFrame {
         }
 
         try {
-            userManager.registerUser(username, password, email, "fanatic");
+            if (useServer) {
+                if (socketUserClient == null) socketUserClient = new SocketUserClient("127.0.0.1", 5432);
+                socketUserClient.register(username, password, email, "fanatic");
+            } else {
+                userManager.registerUser(username, password, email, "fanatic");
+            }
             setSuccess("Cuenta creada. Ahora puedes iniciar sesión.");
             // Close after short delay
             Timer t = new Timer(1200, evt -> {
