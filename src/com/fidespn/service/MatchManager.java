@@ -3,7 +3,6 @@ package com.fidespn.service;
 import com.fidespn.model.Match;
 import com.fidespn.model.MatchEvent;
 import com.fidespn.model.Team;
-import com.fidespn.model.Player;
 import com.fidespn.model.Chat;
 import com.fidespn.model.ChatMessage;
 import com.fidespn.service.exceptions.MatchNotFoundException;
@@ -16,6 +15,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.beans.PropertyChangeListener;
+import java.beans.PropertyChangeSupport;
 
 public class MatchManager {
     private Map<String, Match> matchesById;
@@ -24,6 +25,7 @@ public class MatchManager {
     private static final String MATCHES_FILE = "matches.ser";
     private static final String TEAMS_FILE = "teams.ser";
     private static final String CHATS_FILE = "chats.ser"; // Archivo para chats
+    private final PropertyChangeSupport eventBus = new PropertyChangeSupport(this);
 
     public MatchManager() {
         this.matchesById = new HashMap<>();
@@ -31,6 +33,15 @@ public class MatchManager {
         this.chatsByMatchId = new HashMap<>();
         loadData(); // Primero cargar datos existentes
         initializeDefaultTeams(); // Luego inicializar equipos por defecto si no hay
+    }
+
+    // --- Event bus API ---
+    public void addListener(PropertyChangeListener listener) {
+        eventBus.addPropertyChangeListener(listener);
+    }
+
+    public void removeListener(PropertyChangeListener listener) {
+        eventBus.removePropertyChangeListener(listener);
     }
 
     /**
@@ -124,6 +135,7 @@ public class MatchManager {
 
         saveData(); // Guardar datos después de crear un partido
         System.out.println("Partido creado: " + homeTeam.getName() + " vs " + awayTeam.getName());
+        eventBus.firePropertyChange("matchCreated", null, newMatch);
         return newMatch;
     }
 
@@ -162,6 +174,7 @@ public class MatchManager {
         match.setScoreAway(awayScore);
         saveData();
         System.out.println("Marcador actualizado para " + match.getHomeTeam().getName() + " vs " + match.getAwayTeam().getName() + ": " + homeScore + "-" + awayScore);
+        eventBus.firePropertyChange("scoreUpdated", null, match);
     }
 
     /**
@@ -175,6 +188,7 @@ public class MatchManager {
         match.setStatus(status);
         saveData();
         System.out.println("Estado de partido " + match.getHomeTeam().getName() + " vs " + match.getAwayTeam().getName() + " actualizado a: " + status);
+        eventBus.firePropertyChange("statusUpdated", null, match);
     }
 
     /**
@@ -193,6 +207,7 @@ public class MatchManager {
         match.addEvent(event);
         saveData();
         System.out.println("Evento agregado al partido " + matchId + ": " + type + " - " + description);
+        eventBus.firePropertyChange("eventAdded", null, event);
         return event;
     }
 
@@ -247,6 +262,7 @@ public class MatchManager {
         matchesById.remove(matchId);
         chatsByMatchId.remove(matchId);
         saveData();
+        eventBus.firePropertyChange("matchDeleted", matchId, null);
     }
 
     // --- Métodos para Serialización (Persistencia) ---
@@ -264,19 +280,10 @@ public class MatchManager {
         }
     }
 
-    // Método privado para guardar solo equipos (si fuera necesario, pero saveData ya lo hace)
-    // Se mantiene por si se desea una granularidad de guardado específica en el futuro,
-    // pero por ahora, saveData es suficiente.
-    private void saveTeams() {
-        try (ObjectOutputStream oosTeams = new ObjectOutputStream(new FileOutputStream(TEAMS_FILE))) {
-            oosTeams.writeObject(new ArrayList<>(teamsById.values()));
-            System.out.println("Equipos guardados en " + TEAMS_FILE);
-        } catch (IOException e) {
-            System.err.println("Error al guardar equipos: " + e.getMessage());
-        }
-    }
+    // Eliminado: saveTeams() no es necesario ya que saveData() persiste equipos
 
 
+    @SuppressWarnings("unchecked")
     private void loadData() {
         File matchesFile = new File(MATCHES_FILE);
         File teamsFile = new File(TEAMS_FILE);

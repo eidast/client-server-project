@@ -25,6 +25,8 @@ public class LoginFrame extends JFrame {
     private JPasswordField passwordField;
     private JLabel messageLabel;
     private JButton loginButton;
+    private JLabel createAccountLabel;
+    private JLabel forgotPasswordLabel;
 
     public LoginFrame(UserManager userManager) {
         this.userManager = userManager;
@@ -115,6 +117,24 @@ public class LoginFrame extends JFrame {
         gbc.fill = GridBagConstraints.NONE; // No rellenar, usar tamaño preferido
         panel.add(loginButton, gbc);
 
+        // Enlaces de ayuda
+        JPanel linksPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 12, 0));
+        linksPanel.setOpaque(false);
+        createAccountLabel = new JLabel("Crear cuenta");
+        createAccountLabel.setForeground(new Color(37, 99, 235));
+        createAccountLabel.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        forgotPasswordLabel = new JLabel("¿Olvidaste tu contraseña?");
+        forgotPasswordLabel.setForeground(new Color(37, 99, 235));
+        forgotPasswordLabel.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        linksPanel.add(createAccountLabel);
+        linksPanel.add(new JLabel("|"));
+        linksPanel.add(forgotPasswordLabel);
+
+        gbc.gridy = 6;
+        gbc.insets = new Insets(8, 10, 0, 10);
+        gbc.fill = GridBagConstraints.HORIZONTAL;
+        panel.add(linksPanel, gbc);
+
         add(panel);
     }
 
@@ -138,7 +158,23 @@ public class LoginFrame extends JFrame {
                 performLogin();
             }
         });
+        
+        // Abrir registro de cuenta
+        createAccountLabel.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseClicked(MouseEvent e) {
+                new RegisterFrame(userManager).setVisible(true);
+            }
+        });
 
+        // Abrir recuperación de contraseña
+        forgotPasswordLabel.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseClicked(MouseEvent e) {
+                ForgotPasswordDialog dialog = new ForgotPasswordDialog(LoginFrame.this, userManager);
+                dialog.setVisible(true);
+            }
+        });
     }
 
     private void performLogin() {

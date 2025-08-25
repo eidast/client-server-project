@@ -150,6 +150,31 @@ public class UserManager {
         return updatedUser;
     }
 
+    /**
+     * Resets the password for a user after validating username and email.
+     * This simple flow is intended for local usage without email delivery.
+     *
+     * @param username Username to identify the account.
+     * @param email Email associated with the account; must match exactly (case-insensitive).
+     * @param newPassword New password to set.
+     * @throws UserNotFoundException When the username does not exist.
+     * @throws InvalidCredentialsException When the email does not match the account.
+     */
+    public void resetPasswordByUsernameAndEmail(String username, String email, String newPassword) throws UserNotFoundException, InvalidCredentialsException {
+        User user = usersByUsername.get(username);
+        if (user == null) {
+            throw new UserNotFoundException("Usuario no encontrado: " + username);
+        }
+        if (email == null || !user.getEmail().equalsIgnoreCase(email)) {
+            throw new InvalidCredentialsException("El email no coincide para el usuario: " + username);
+        }
+        user.setPassword(newPassword);
+        // Ensure the user map references the updated instance
+        usersByUsername.put(username, user);
+        saveUsers();
+        System.out.println("Contraseña restablecida para: " + username);
+    }
+
     public void deleteUser(String userId) throws UserNotFoundException {
         User userToRemove = null;
         for (User user : allUsers) {
@@ -190,6 +215,7 @@ public class UserManager {
         }
     }
 
+    @SuppressWarnings("unchecked")
     private void loadUsers() {
         File file = new File(USERS_FILE);
         if (file.exists()) {

@@ -18,7 +18,8 @@ La aplicación utiliza una arquitectura MVC (Model-View-Controller) con persiste
 - **Java Swing**: Incluido en el JDK estándar
 - **Java Serialization**: Para persistencia de datos
 - **Java Collections Framework**: Para estructuras de datos
-- **Java Timer**: Para actualizaciones en tiempo real
+- **Java Beans (PropertyChangeSupport)**: Bus de eventos para actualizaciones en tiempo real
+- **AWT SystemTray**: Notificaciones de escritorio
 
 ## Cómo Ejecutar
 
@@ -97,9 +98,9 @@ La aplicación incluye usuarios de demostración preconfigurados que se crean au
 
 #### **Sistema de Partidos en Vivo**
 - Ventana dedicada para seguimiento de partidos en vivo
-- Actualización automática cada 30 segundos
+- Actualización en tiempo real basada en eventos (sin polling)
 - Visualización de eventos en tiempo real
-- Marcadores actualizados dinámicamente
+- Marcadores actualizados dinámicamente y notificaciones de escritorio
 
 #### **Persistencia de Datos **
 - Serialización automática de datos
@@ -116,12 +117,15 @@ La aplicación incluye usuarios de demostración preconfigurados que se crean au
 
 ### 🔄 Funcionalidades en Desarrollo
 
-- Registro de nuevos usuarios desde la interfaz
-- Recuperación de contraseñas
-- Notificaciones push
-- Estadísticas avanzadas de jugadores
-- Exportación de reportes en PDF
-- Sistema de notificaciones en tiempo real
+En esta versión no hay funcionalidades pendientes. Las planificadas fueron implementadas.
+
+#### Novedades recientes
+- Registro de nuevos usuarios (auto-registro desde `LoginFrame`)
+- Recuperación de contraseñas (diálogo de validación por usuario + email)
+- Notificaciones de escritorio (SystemTray) ante eventos y cambios de marcador
+- Actualizaciones en vivo event-driven con `PropertyChangeSupport`
+- Estadísticas básicas por partido en `LiveMatchFrame`
+- Exportación de reportes a PDF desde `CorrespondentDashboardFrame` y `LiveMatchFrame`
 
 ## Estructura de Carpetas
 
@@ -154,6 +158,8 @@ Semana9/
 │           │   │   ├── TeamNotFoundException.java
 │           │   │   └── UserNotFoundException.java
 │           │   ├── MatchManager.java
+│           │   ├── ReportService.java
+│           │   ├── StatisticsService.java
 │           │   └── UserManager.java
 │           └── view/          # Interfaces de usuario
 │               ├── AdminDashboardFrame.java
@@ -161,6 +167,9 @@ Semana9/
 │               ├── FanaticDashboardFrame.java
 │               ├── LiveMatchFrame.java
 │               ├── LoginFrame.java
+│               ├── RegisterFrame.java
+│               ├── ForgotPasswordDialog.java
+│               ├── TrayNotifier.java
 │               └── ManageFavoriteTeamsFrame.java
 ├── chats.ser                  # Datos de chats (generado automáticamente)
 ├── matches.ser                # Datos de partidos (generado automáticamente)
@@ -227,10 +236,10 @@ Interfaces gráficas de usuario modernas:
 - Navegación intuitiva entre ventanas
 
 ### **Tiempo Real**
-- Timer para actualizaciones automáticas
+- Bus de eventos con `PropertyChangeSupport`
+- Notificaciones SystemTray para eventos y marcador
 - Chat en vivo por partido
-- Actualización de marcadores dinámica
-- Eventos de partido en tiempo real
+- Actualización de marcadores y eventos en tiempo real
 
 ## Tecnologías Utilizadas
 

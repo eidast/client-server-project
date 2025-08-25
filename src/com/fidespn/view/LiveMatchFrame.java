@@ -5,14 +5,17 @@ import com.fidespn.model.Match;
 import com.fidespn.model.MatchEvent;
 import com.fidespn.service.MatchManager;
 import com.fidespn.service.UserManager;
+import com.fidespn.service.StatisticsService;
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import java.awt.*;
 import java.text.SimpleDateFormat;
 import java.util.List;
+import java.beans.PropertyChangeEvent;
+import java.beans.PropertyChangeListener;
 
-public class LiveMatchFrame extends JFrame {
+public class LiveMatchFrame extends JFrame implements PropertyChangeListener {
     private UserManager userManager;
     private MatchManager matchManager;
     private Fanatic currentFanatic;
@@ -20,7 +23,8 @@ public class LiveMatchFrame extends JFrame {
     
     private JLabel scoreLabel;
     private JTextArea eventsArea;
-    private Timer updateTimer;
+    // Removed polling timer in favor of event-driven updates
+    private JLabel statsLabel;
 
     public LiveMatchFrame(UserManager userManager, MatchManager matchManager, Fanatic currentFanatic, Match match) {
         this.userManager = userManager;
@@ -35,7 +39,8 @@ public class LiveMatchFrame extends JFrame {
         setResizable(true);
 
         initComponents();
-        startLiveUpdates();
+        // Subscribe to realtime updates
+        this.matchManager.addListener(this);
     }
 
     private void initComponents() {
@@ -102,6 +107,13 @@ public class LiveMatchFrame extends JFrame {
         scrollPane.setBorder(BorderFactory.createLineBorder(new Color(229, 231, 235)));
         eventsPanel.add(scrollPane, BorderLayout.CENTER);
 
+        // Stats summary
+        statsLabel = new JLabel(" ", SwingConstants.LEFT);
+        statsLabel.setFont(new Font("Inter", Font.PLAIN, 13));
+        statsLabel.setForeground(new Color(55, 65, 81));
+        statsLabel.setBorder(new EmptyBorder(8, 0, 0, 0));
+        eventsPanel.add(statsLabel, BorderLayout.SOUTH);
+
         mainPanel.add(eventsPanel, BorderLayout.CENTER);
 
         // --- Panel de botones ---
@@ -118,8 +130,25 @@ public class LiveMatchFrame extends JFrame {
         JButton refreshButton = createStyledButton("Actualizar", new Color(34, 197, 94));
         refreshButton.addActionListener(e -> updateMatchInfo());
 
+        JButton exportPdfBtn = createStyledButton("Exportar PDF", new Color(37, 99, 235));
+        exportPdfBtn.addActionListener(e -> {
+            try {
+                javax.swing.JFileChooser chooser = new javax.swing.JFileChooser();
+                chooser.setSelectedFile(new java.io.File("reporte-" + currentMatch.getHomeTeam().getName() + "-" + currentMatch.getAwayTeam().getName() + ".pdf"));
+                int result = chooser.showSaveDialog(this);
+                if (result == javax.swing.JFileChooser.APPROVE_OPTION) {
+                    java.io.File file = chooser.getSelectedFile();
+                    new com.fidespn.service.ReportService().exportMatchReport(currentMatch, file);
+                    JOptionPane.showMessageDialog(this, "PDF exportado en: " + file.getAbsolutePath(), "Éxito", JOptionPane.INFORMATION_MESSAGE);
+                }
+            } catch (Exception ex) {
+                JOptionPane.showMessageDialog(this, "Error al exportar PDF: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+            }
+        });
+
         buttonPanel.add(backButton);
         buttonPanel.add(refreshButton);
+        buttonPanel.add(exportPdfBtn);
 
         mainPanel.add(buttonPanel, BorderLayout.SOUTH);
 
@@ -129,11 +158,7 @@ public class LiveMatchFrame extends JFrame {
         updateMatchInfo();
     }
 
-    private void startLiveUpdates() {
-        // Timer para actualizar la información cada 30 segundos
-        updateTimer = new Timer(30000, e -> updateMatchInfo());
-        updateTimer.start();
-    }
+    // Eliminated polling; updates will be event-driven
 
     private void updateMatchInfo() {
         // Actualizar marcador
@@ -143,6 +168,7 @@ public class LiveMatchFrame extends JFrame {
 
         // Actualizar eventos
         updateEvents();
+        updateStats();
     }
 
     private void updateEvents() {
@@ -164,6 +190,16 @@ public class LiveMatchFrame extends JFrame {
         eventsArea.setCaretPosition(0); // Ir al inicio
     }
 
+    private void updateStats() {
+        StatisticsService service = new StatisticsService();
+        StatisticsService.MatchStats stats = service.computeMatchStats(currentMatch);
+        statsLabel.setText("Eventos: " + stats.totalEvents +
+                " | Goles: " + stats.goals +
+                " | Amarillas: " + stats.yellowCards +
+                " | Rojas: " + stats.redCards +
+                " | Cambios: " + stats.substitutions);
+    }
+
     private JButton createStyledButton(String text, Color bgColor) {
         JButton button = new JButton(text);
         button.setFont(new Font("Inter", Font.BOLD, 13));
@@ -180,9 +216,42 @@ public class LiveMatchFrame extends JFrame {
 
     @Override
     public void dispose() {
-        if (updateTimer != null) {
-            updateTimer.stop();
-        }
+        // Unsubscribe from events
+        this.matchManager.removeListener(this);
         super.dispose();
+    }
+
+    @Override
+    public void propertyChange(PropertyChangeEvent evt) {
+        String name = evt.getPropertyName();
+        if (name == null) return;
+        switch (name) {
+            case "scoreUpdated":
+            case "statusUpdated":
+                if (evt.getNewValue() instanceof Match) {
+                    Match m = (Match) evt.getNewValue();
+                    if (m.getMatchId().equals(currentMatch.getMatchId())) {
+                        this.currentMatch = m;
+                        SwingUtilities.invokeLater(this::updateMatchInfo);
+                        try {
+                            TrayNotifier.show("Marcador actualizado", m.getHomeTeam().getName() + " " + m.getScoreHome() + " - " + m.getScoreAway() + " " + m.getAwayTeam().getName());
+                        } catch (Exception ignored) {}
+                    }
+                }
+                break;
+            case "eventAdded":
+                if (evt.getNewValue() instanceof MatchEvent) {
+                    MatchEvent me = (MatchEvent) evt.getNewValue();
+                    if (me.getMatchId().equals(currentMatch.getMatchId())) {
+                        SwingUtilities.invokeLater(this::updateEvents);
+                        try {
+                            TrayNotifier.show("Nuevo evento", me.getType() + ": " + me.getDescription());
+                        } catch (Exception ignored) {}
+                    }
+                }
+                break;
+            default:
+                break;
+        }
     }
 } 

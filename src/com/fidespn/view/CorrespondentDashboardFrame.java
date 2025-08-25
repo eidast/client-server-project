@@ -2,19 +2,14 @@ package com.fidespn.view;
 
 import com.fidespn.model.Match;
 import com.fidespn.model.User;
-import com.fidespn.model.Correspondent;
 import com.fidespn.service.MatchManager;
 import com.fidespn.service.UserManager;
-import com.fidespn.service.exceptions.MatchNotFoundException;
-import com.fidespn.service.exceptions.UserNotFoundException;
 import com.fidespn.model.MatchEvent;
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import javax.swing.table.DefaultTableModel;
 import java.awt.*;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
 import java.text.SimpleDateFormat;
 import java.util.List;
 
@@ -185,8 +180,10 @@ public class CorrespondentDashboardFrame extends JFrame {
         JPanel formBtnPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 10, 0));
         JButton enviarBtn = createStyledButton("Enviar Reporte", new Color(34, 197, 94));
         JButton editarBtn = createStyledButton("Editar Reporte", new Color(234, 179, 8));
+        JButton exportPdfBtn = createStyledButton("Exportar PDF", new Color(37, 99, 235));
         formBtnPanel.add(enviarBtn);
         formBtnPanel.add(editarBtn);
+        formBtnPanel.add(exportPdfBtn);
         eventFormPanel.add(formBtnPanel, gbc);
         verticalPanel.add(eventFormPanel);
         verticalPanel.add(Box.createRigidArea(new Dimension(0, 15)));
@@ -262,6 +259,9 @@ public class CorrespondentDashboardFrame extends JFrame {
                 descArea.setText("");
                 minuteSpinner.setValue(0);
                 JOptionPane.showMessageDialog(this, "Evento reportado exitosamente.", "Éxito", JOptionPane.INFORMATION_MESSAGE);
+                try {
+                    TrayNotifier.show("Nuevo evento", type + ": " + desc);
+                } catch (Exception ignored) {}
             } catch (Exception ex) {
                 JOptionPane.showMessageDialog(this, "Error al reportar evento: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
             }
@@ -297,6 +297,26 @@ public class CorrespondentDashboardFrame extends JFrame {
                 JOptionPane.showMessageDialog(this, "Evento editado exitosamente.", "Éxito", JOptionPane.INFORMATION_MESSAGE);
             } catch (Exception ex) {
                 JOptionPane.showMessageDialog(this, "Error al editar evento: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+            }
+        });
+
+        // Listener para Exportar PDF
+        exportPdfBtn.addActionListener(e -> {
+            if (selectedMatch == null) {
+                JOptionPane.showMessageDialog(this, "Seleccione un partido para exportar.", "Error", JOptionPane.ERROR_MESSAGE);
+                return;
+            }
+            try {
+                javax.swing.JFileChooser chooser = new javax.swing.JFileChooser();
+                chooser.setSelectedFile(new java.io.File("reporte-" + selectedMatch.getHomeTeam().getName() + "-" + selectedMatch.getAwayTeam().getName() + ".pdf"));
+                int result = chooser.showSaveDialog(this);
+                if (result == javax.swing.JFileChooser.APPROVE_OPTION) {
+                    java.io.File file = chooser.getSelectedFile();
+                    new com.fidespn.service.ReportService().exportMatchReport(selectedMatch, file);
+                    JOptionPane.showMessageDialog(this, "PDF exportado en: " + file.getAbsolutePath(), "Éxito", JOptionPane.INFORMATION_MESSAGE);
+                }
+            } catch (Exception ex) {
+                JOptionPane.showMessageDialog(this, "Error al exportar PDF: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
             }
         });
 
