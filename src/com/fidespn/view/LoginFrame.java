@@ -21,7 +21,7 @@ import java.awt.event.MouseEvent;
 public class LoginFrame extends JFrame {
     private UserManager userManager;
     private MatchManager matchManager;
-    private boolean useServer = false; // Toggle: local managers vs backend socket
+    private boolean useServer = true; // Toggle: local managers vs backend socket
     private SocketUserClient socketUserClient;
 
     private JTextField usernameField;
@@ -191,17 +191,39 @@ public class LoginFrame extends JFrame {
         }
 
         try {
-            User loggedInUser;
             if (useServer) {
                 if (socketUserClient == null) socketUserClient = new SocketUserClient("127.0.0.1", 5432);
-                String token = socketUserClient.login(username, password);
-                // Local echo user object for routing by role
-                loggedInUser = userManager.getUserByUsername(username);
-            } else {
-                loggedInUser = userManager.loginUser(username, password);
+                socketUserClient.login(username, password);
+                messageLabel.setText("¡Inicio de sesión exitoso! Redirigiendo...");
+                messageLabel.setForeground(new Color(34, 197, 94));
+
+                this.dispose();
+
+                String role = socketUserClient.getRole();
+                if ("admin".equalsIgnoreCase(role)) {
+                    new AdminDashboardFrame(userManager, matchManager).setVisible(true);
+                } else if ("correspondent".equalsIgnoreCase(role)) {
+                    com.fidespn.model.Correspondent corr = new com.fidespn.model.Correspondent(
+                            socketUserClient.getUserId(), username, "", socketUserClient.getEmail());
+                    CorrespondentDashboardFrame f = new CorrespondentDashboardFrame(userManager, matchManager, corr);
+                    if (f != null) f.setSocketToken(socketUserClient.getToken());
+                    f.setVisible(true);
+                } else if ("fanatic".equalsIgnoreCase(role)) {
+                    com.fidespn.model.Fanatic fan = new com.fidespn.model.Fanatic(
+                            socketUserClient.getUserId(), username, "", socketUserClient.getEmail());
+                    FanaticDashboardFrame f = new FanaticDashboardFrame(userManager, matchManager, fan);
+                    if (f != null) f.setSocketToken(socketUserClient.getToken());
+                    f.setVisible(true);
+                } else {
+                    JOptionPane.showMessageDialog(this, "Rol no reconocido desde servidor.", "Error de Inicio de Sesión", JOptionPane.ERROR_MESSAGE);
+                    new LoginFrame(userManager).setVisible(true);
+                }
+                return;
             }
+
+            User loggedInUser = userManager.loginUser(username, password);
             messageLabel.setText("¡Inicio de sesión exitoso! Redirigiendo...");
-            messageLabel.setForeground(new Color(34, 197, 94)); // text-green-500
+            messageLabel.setForeground(new Color(34, 197, 94));
 
             this.dispose();
 
@@ -220,7 +242,11 @@ public class LoginFrame extends JFrame {
             messageLabel.setText(ex.getMessage());
             messageLabel.setForeground(new Color(239, 68, 68)); // text-red-500
         } catch (Exception ex) {
-            messageLabel.setText("Ocurrió un error inesperado: " + ex.getMessage());
+            if (useServer) {
+                messageLabel.setText("Servidor no disponible. Verifique que el backend esté en ejecución.");
+            } else {
+                messageLabel.setText("Ocurrió un error inesperado: " + ex.getMessage());
+            }
             messageLabel.setForeground(new Color(239, 68, 68)); // text-red-500
             ex.printStackTrace();
         }

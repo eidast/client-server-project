@@ -137,7 +137,7 @@ public class ServerApp {
     }
 
     private String handleGetMatches(String[] p) throws Exception {
-        try (var c = DerbyUtil.getConnection(); var rs = c.createStatement().executeQuery("SELECT match_id,date_ts,time_txt,home_team_id,away_team_id,score_home,score_away,status FROM matches ORDER BY date_ts")) {
+        try (var c = DerbyUtil.getConnection(); var rs = c.createStatement().executeQuery("SELECT match_id,date_ts,time_txt,home_team_id,away_team_id,score_home,score_away,status,correspondent_id FROM matches ORDER BY date_ts")) {
             StringBuilder sb = new StringBuilder();
             while (rs.next()) {
                 if (sb.length() > 0) sb.append('\n');
@@ -148,7 +148,8 @@ public class ServerApp {
                   .append(rs.getString(5)).append(',')
                   .append(rs.getInt(6)).append(',')
                   .append(rs.getInt(7)).append(',')
-                  .append(rs.getString(8));
+                  .append(rs.getString(8)).append(',')
+                  .append(rs.getString(9) == null ? "" : rs.getString(9));
             }
             return ok(sb.toString());
         }

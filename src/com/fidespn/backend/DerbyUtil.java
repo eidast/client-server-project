@@ -67,7 +67,7 @@ public final class DerbyUtil {
                     st.executeUpdate("CREATE TABLE match_events (" +
                             "event_id VARCHAR(36) PRIMARY KEY, " +
                             "match_id VARCHAR(36) NOT NULL, " +
-                            "minute INT, " +
+                            "event_minute INT, " +
                             "type VARCHAR(32), " +
                             "description CLOB, " +
                             "ts TIMESTAMP)");

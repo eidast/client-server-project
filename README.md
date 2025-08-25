@@ -16,21 +16,38 @@ La aplicación utiliza una arquitectura MVC (Model-View-Controller) con persiste
 
 ### Dependencias
 - **Java Swing**: Incluido en el JDK estándar
-- **Java Serialization**: Para persistencia de datos
+- **Apache Derby**: Base de datos embebida (requiere `derby.jar` y `derbyshared.jar` en `./lib/`)
 - **Java Collections Framework**: Para estructuras de datos
 - **Java Beans (PropertyChangeSupport)**: Bus de eventos para actualizaciones en tiempo real
 - **AWT SystemTray**: Notificaciones de escritorio
 
 ## Cómo Ejecutar
 
-### Opción 1: Desde la línea de comandos
+### Backend (Servidor por sockets + Derby)
 
-1. **Compilar el proyecto:**
+1. Compilar clases del backend (incluyendo Derby drivers):
    ```bash
-   javac -d bin src/com/fidespn/main/*.java src/com/fidespn/model/*.java src/com/fidespn/service/*.java src/com/fidespn/service/exceptions/*.java src/com/fidespn/view/*.java
+   javac -cp "lib/derby.jar;lib/derbyshared.jar" -d bin src/com/fidespn/backend/*.java
    ```
+2. Ejecutar el servidor (crea Derby y datos demo si no existen):
+   ```bash
+   java -cp "bin;lib/derby.jar;lib/derbyshared.jar" com.fidespn.backend.ServerApp
+   ```
+   - Escucha en `localhost:5432`
+   - Base de datos: `./data/fidespn` (Apache Derby Embedded)
+   - **Nota**: En Windows usa `;` como separador de classpath, en Linux/macOS usa `:`
 
-2. **Ejecutar la aplicación:**
+### Cliente (Aplicación Swing)
+
+> Nota: El cliente está configurado para usar el servidor por defecto.
+
+Si el servidor no está disponible, el cliente mostrará un mensaje de error indicando que el backend no está en ejecución.
+
+1. Compilar cliente + modelos/servicios:
+   ```bash
+   javac -d bin src/com/fidespn/main/*.java src/com/fidespn/model/*.java src/com/fidespn/service/*.java src/com/fidespn/service/exceptions/*.java src/com/fidespn/view/*.java src/com/fidespn/client/net/*.java src/com/fidespn/client/adapters/*.java
+   ```
+2. Ejecutar cliente:
    ```bash
    java -cp bin com.fidespn.main.MainApp
    ```
@@ -103,8 +120,8 @@ La aplicación incluye usuarios de demostración preconfigurados que se crean au
 - Marcadores actualizados dinámicamente y notificaciones de escritorio
 
 #### **Persistencia de Datos **
-- Serialización automática de datos
-- Archivos de datos: `users.ser`, `matches.ser`, `teams.ser`, `chats.ser`
+- Base de datos Apache Derby embebida
+- Tablas relacionales: `users`, `teams`, `matches`, `events`, `chat_messages`, `players`, `lineups`
 - Carga automática al iniciar la aplicación
 - Manejo de errores en la persistencia
 
@@ -128,18 +145,30 @@ En esta versión no hay funcionalidades pendientes. Las planificadas fueron impl
 ## Estructura de Carpetas
 
 ```
-Semana9/
+client-server-project/
 ├── .gitignore                 # Archivo de exclusión para Git
 ├── LICENSE.md                 # Licencia del proyecto
 ├── README.md                  # Documentación del proyecto
+├── lib/                       # Dependencias externas
+│   ├── derby.jar             # Motor principal de Apache Derby
+│   └── derbyshared.jar       # Clases compartidas de Derby
 ├── src/                       # Código fuente principal
 │   └── com/
 │       └── fidespn/
 │           ├── main/          # Punto de entrada de la aplicación
 │           │   └── MainApp.java
+│           ├── backend/       # Servidor backend con Derby
+│           │   ├── DerbyUtil.java
+│           │   └── ServerApp.java
+│           ├── client/        # Adaptadores de cliente
+│           │   ├── net/
+│           │   │   └── SocketClient.java
+│           │   └── adapters/
+│           │       ├── SocketUserClient.java
+│           │       └── SocketMatchClient.java
 │           ├── model/         # Modelos de datos
 │           │   ├── Administrator.java
-│           │   ├── Chat.java
+│           │   │   ├── Chat.java
 │           │   ├── ChatMessage.java
 │           │   ├── Correspondent.java
 │           │   ├── Fanatic.java
@@ -169,10 +198,9 @@ Semana9/
 │               ├── ForgotPasswordDialog.java
 │               ├── TrayNotifier.java
 │               └── ManageFavoriteTeamsFrame.java
-├── chats.ser                  # Datos de chats (generado automáticamente)
-├── matches.ser                # Datos de partidos (generado automáticamente)
-├── teams.ser                  # Datos de equipos (generado automáticamente)
-└── users.ser                  # Datos de usuarios (generado automáticamente)
+├── data/                      # Base de datos Derby (generada automáticamente)
+│   └── fidespn/              # Archivos de Derby
+└── bin/                       # Clases compiladas (generadas automáticamente)
 ```
 
 ### Descripción de Paquetes
@@ -183,6 +211,17 @@ Contiene la clase principal `MainApp.java` que:
 - Configura los managers de usuarios y partidos
 - Crea usuarios de prueba automáticamente
 - Inicializa datos de demostración
+
+#### **`backend`**
+Contiene el servidor backend:
+- **ServerApp**: Servidor principal que escucha conexiones de clientes
+- **DerbyUtil**: Utilidad para inicializar y conectar con la base de datos Derby
+
+#### **`client`**
+Contiene adaptadores para comunicación cliente-servidor:
+- **SocketClient**: Clase base para comunicación por sockets
+- **SocketUserClient**: Adaptador para operaciones de usuario (login, registro, etc.)
+- **SocketMatchClient**: Adaptador para operaciones de partidos y equipos
 
 #### **`model`**
 Define todas las entidades del sistema:
@@ -217,8 +256,8 @@ Interfaces gráficas de usuario modernas:
 - **Controller**: Lógica de negocio en el paquete `service`
 
 ### **Persistencia de Datos**
-- Serialización Java para almacenamiento local
-- Archivos `.ser` para cada tipo de entidad
+- Base de datos Apache Derby embebida
+- Tablas relacionales para usuarios, equipos, partidos, eventos y chats
 - Carga automática al inicio de la aplicación
 - Guardado automático tras cada operación
 
@@ -243,7 +282,8 @@ Interfaces gráficas de usuario modernas:
 
 - **Java 8+**: Lenguaje de programación principal
 - **Java Swing**: Framework para interfaz gráfica
-- **Java Serialization**: Persistencia de datos
+- **Apache Derby**: Base de datos embebida
+- **Java Sockets**: Comunicación cliente-servidor
 - **Java Timer**: Actualizaciones en tiempo real
 - **Arquitectura MVC**: Separación de responsabilidades
 - **Git**: Control de versiones
@@ -290,6 +330,6 @@ Para preguntas o soporte, contacta al equipo de desarrollo de FidESPN United 202
 
 ---
 
-**Versión**: 3.0  
+**Versión**: 4.0 (Client-Server)  
 **Última actualización**: Agosto 2025  
-**Estado**: Funcionalidades principales completadas 
+**Estado**: Sistema cliente-servidor completo con Derby 

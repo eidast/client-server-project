@@ -12,6 +12,8 @@
 
 # Package Files
 *.jar
+!lib/derby.jar
+!lib/derbyshared.jar
 *.war
 *.nar
 *.ear

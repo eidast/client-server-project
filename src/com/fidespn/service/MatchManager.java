@@ -8,7 +8,7 @@ import com.fidespn.model.ChatMessage;
 import com.fidespn.service.exceptions.MatchNotFoundException;
 import com.fidespn.service.exceptions.TeamNotFoundException;
 
-import java.io.*;
+// Note: java.io.* import removed - no more .ser file operations
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
@@ -22,17 +22,15 @@ public class MatchManager {
     private Map<String, Match> matchesById;
     private Map<String, Team> teamsById;
     private Map<String, Chat> chatsByMatchId;
-    private static final String MATCHES_FILE = "matches.ser";
-    private static final String TEAMS_FILE = "teams.ser";
-    private static final String CHATS_FILE = "chats.ser"; // Archivo para chats
+    // Note: .ser files removed - persistence handled by server via Derby
     private final PropertyChangeSupport eventBus = new PropertyChangeSupport(this);
 
     public MatchManager() {
         this.matchesById = new HashMap<>();
         this.teamsById = new HashMap<>();
         this.chatsByMatchId = new HashMap<>();
-        loadData(); // Primero cargar datos existentes
-        initializeDefaultTeams(); // Luego inicializar equipos por defecto si no hay
+        // Note: No more .ser file loading - data comes from server via socket adapters
+        initializeDefaultTeams(); // Initialize default teams locally for demo if needed
     }
 
     // --- Event bus API ---
@@ -73,7 +71,7 @@ public class MatchManager {
                 addTeam(new Team("POR", "Portugal", "Portugal", "url_por.png"));
                 addTeam(new Team("ITA", "Italia", "Italia", "url_ita.png"));
                 addTeam(new Team("BEL", "Bélgica", "Bélgica", "url_bel.png"));
-                saveData(); // <--- CORRECCIÓN: Llamar a saveData() para persistir los equipos por defecto
+                // Note: No more .ser saving - persistence handled by server // <--- CORRECCIÓN: Llamar a saveData() para persistir los equipos por defecto
             } catch (Exception e) {
                 System.err.println("Error al inicializar equipos por defecto: " + e.getMessage());
             }
@@ -133,7 +131,7 @@ public class MatchManager {
         Chat newChat = new Chat(newMatch.getChatId(), matchId);
         chatsByMatchId.put(matchId, newChat);
 
-        saveData(); // Guardar datos después de crear un partido
+        // Note: No more .ser saving - persistence handled by server // Guardar datos después de crear un partido
         System.out.println("Partido creado: " + homeTeam.getName() + " vs " + awayTeam.getName());
         eventBus.firePropertyChange("matchCreated", null, newMatch);
         return newMatch;
@@ -172,7 +170,7 @@ public class MatchManager {
         Match match = getMatchById(matchId);
         match.setScoreHome(homeScore);
         match.setScoreAway(awayScore);
-        saveData();
+        // Note: No more .ser saving - persistence handled by server
         System.out.println("Marcador actualizado para " + match.getHomeTeam().getName() + " vs " + match.getAwayTeam().getName() + ": " + homeScore + "-" + awayScore);
         eventBus.firePropertyChange("scoreUpdated", null, match);
     }
@@ -186,7 +184,7 @@ public class MatchManager {
     public void updateMatchStatus(String matchId, String status) throws MatchNotFoundException {
         Match match = getMatchById(matchId);
         match.setStatus(status);
-        saveData();
+        // Note: No more .ser saving - persistence handled by server
         System.out.println("Estado de partido " + match.getHomeTeam().getName() + " vs " + match.getAwayTeam().getName() + " actualizado a: " + status);
         eventBus.firePropertyChange("statusUpdated", null, match);
     }
@@ -205,7 +203,7 @@ public class MatchManager {
         String eventId = UUID.randomUUID().toString();
         MatchEvent event = new MatchEvent(eventId, matchId, minute, type, description);
         match.addEvent(event);
-        saveData();
+        // Note: No more .ser saving - persistence handled by server
         System.out.println("Evento agregado al partido " + matchId + ": " + type + " - " + description);
         eventBus.firePropertyChange("eventAdded", null, event);
         return event;
@@ -250,7 +248,7 @@ public class MatchManager {
         String messageId = UUID.randomUUID().toString();
         ChatMessage message = new ChatMessage(messageId, chat.getChatId(), senderId, senderUsername, content);
         chat.addMessage(message);
-        saveData();
+        // Note: No more .ser saving - persistence handled by server
         System.out.println("Mensaje en chat de " + matchId + " de " + senderUsername + ": " + content);
         return message;
     }
@@ -261,71 +259,9 @@ public class MatchManager {
     public void deleteMatchById(String matchId) {
         matchesById.remove(matchId);
         chatsByMatchId.remove(matchId);
-        saveData();
+        // Note: No more .ser saving - persistence handled by server
         eventBus.firePropertyChange("matchDeleted", matchId, null);
     }
 
-    // --- Métodos para Serialización (Persistencia) ---
-    private void saveData() {
-        try (ObjectOutputStream oosMatches = new ObjectOutputStream(new FileOutputStream(MATCHES_FILE));
-             ObjectOutputStream oosTeams = new ObjectOutputStream(new FileOutputStream(TEAMS_FILE));
-             ObjectOutputStream oosChats = new ObjectOutputStream(new FileOutputStream(CHATS_FILE))) {
-            oosMatches.writeObject(new ArrayList<>(matchesById.values()));
-            oosTeams.writeObject(new ArrayList<>(teamsById.values()));
-            oosChats.writeObject(new ArrayList<>(chatsByMatchId.values()));
-
-            System.out.println("Datos de partidos, equipos y chats guardados.");
-        } catch (IOException e) {
-            System.err.println("Error al guardar datos de partidos/equipos/chats: " + e.getMessage());
-        }
-    }
-
-    // Eliminado: saveTeams() no es necesario ya que saveData() persiste equipos
-
-
-    @SuppressWarnings("unchecked")
-    private void loadData() {
-        File matchesFile = new File(MATCHES_FILE);
-        File teamsFile = new File(TEAMS_FILE);
-        File chatsFile = new File(CHATS_FILE);
-
-        if (matchesFile.exists()) {
-            try (ObjectInputStream ois = new ObjectInputStream(new FileInputStream(matchesFile))) {
-                List<Match> loadedMatches = (List<Match>) ois.readObject();
-                this.matchesById.clear();
-                for (Match match : loadedMatches) {
-                    this.matchesById.put(match.getMatchId(), match);
-                }
-                System.out.println("Partidos cargados desde " + MATCHES_FILE);
-            } catch (IOException | ClassNotFoundException e) {
-                System.err.println("Error al cargar partidos: " + e.getMessage());
-            }
-        }
-
-        if (teamsFile.exists()) {
-            try (ObjectInputStream ois = new ObjectInputStream(new FileInputStream(teamsFile))) {
-                List<Team> loadedTeams = (List<Team>) ois.readObject();
-                this.teamsById.clear();
-                for (Team team : loadedTeams) {
-                    this.teamsById.put(team.getTeamId(), team);
-                }
-                System.out.println("Equipos cargados desde " + TEAMS_FILE);
-            } catch (IOException | ClassNotFoundException e) {
-                System.err.println("Error al cargar equipos: " + e.getMessage());
-            }
-        }
-
-        if (chatsFile.exists()) {
-            try (ObjectInputStream ois = new ObjectInputStream(new FileInputStream(chatsFile))) {
-                List<Chat> loadedChats = (List<Chat>) ois.readObject();
-                this.chatsByMatchId.clear();
-                for (Chat chat : loadedChats) {
-                    this.chatsByMatchId.put(chat.getMatchId(), chat);
-                }
-                System.out.println("Chats cargados desde " + CHATS_FILE);
-            } catch (IOException | ClassNotFoundException e) {
-                System.err.println("Error al cargar chats: " + e.getMessage());
-            }
-        }
-    }
+    // Note: saveData() and loadData() removed - persistence now handled by server via Derby
 }

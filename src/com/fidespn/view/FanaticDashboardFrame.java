@@ -5,23 +5,23 @@ import com.fidespn.model.Match;
 import com.fidespn.model.Team;
 import com.fidespn.model.User;
 import com.fidespn.service.MatchManager;
+import com.fidespn.client.adapters.SocketMatchClient;
 import com.fidespn.service.UserManager;
 import com.fidespn.service.exceptions.TeamNotFoundException;
-import com.fidespn.view.ManageFavoriteTeamsFrame;
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import javax.swing.table.DefaultTableModel;
 import java.awt.*;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
 import java.text.SimpleDateFormat;
 import java.util.List;
-import java.util.ArrayList; // Necesario para crear nuevas listas temporales
 
 public class FanaticDashboardFrame extends JFrame {
     private UserManager userManager;
     private MatchManager matchManager;
+    private boolean useServer = true; // Siempre cliente-servidor
+    private String socketToken;
+    private SocketMatchClient socketMatchClient;
     private Fanatic currentFanatic; // El fanático actualmente logueado
 
     private JPanel favoriteTeamsPanel; // Panel para mostrar los equipos favoritos
@@ -40,6 +40,10 @@ public class FanaticDashboardFrame extends JFrame {
         initComponents();
         loadFavoriteTeams();
         loadFeaturedMatches();
+    }
+
+    public void setSocketToken(String token) {
+        this.socketToken = token;
     }
 
     private void initComponents() {
@@ -235,7 +239,41 @@ public class FanaticDashboardFrame extends JFrame {
     private void loadFeaturedMatches() {
         matchesTableModel.setRowCount(0); // Limpiar tabla
         SimpleDateFormat sdf = new SimpleDateFormat("dd MMM yyyy | hh:mm a");
-        List<Match> allMatches = matchManager.getAllMatches();
+        List<Match> allMatches;
+        if (useServer) {
+            try {
+                if (socketMatchClient == null) socketMatchClient = new SocketMatchClient("127.0.0.1", 5432, socketToken);
+                // Map socket rows to temporary Match-like display without mutating model
+                allMatches = new java.util.ArrayList<>();
+                for (String[] row : socketMatchClient.getMatches()) {
+                    // row: matchId,dateMillis,time,homeId,awayId,scoreH,scoreA,status,corrId
+                    String matchId = row[0];
+                    java.util.Date date = new java.util.Date(Long.parseLong(row[1]));
+                    String time = row[2];
+                    String homeId = row[3];
+                    String awayId = row[4];
+                    int sH = Integer.parseInt(row[5]);
+                    int sA = Integer.parseInt(row[6]);
+                    String status = row[7];
+                    // Use teams from local manager just for names
+                    com.fidespn.model.Team home = matchManager.getTeamById(homeId);
+                    com.fidespn.model.Team away = matchManager.getTeamById(awayId);
+                    com.fidespn.model.Match m = new com.fidespn.model.Match(matchId, date, time, home, away, row.length>8?row[8]:null);
+                    m.setScoreHome(sH);
+                    m.setScoreAway(sA);
+                    m.setStatus(status);
+                    allMatches.add(m);
+                }
+            } catch (Exception ex) {
+                allMatches = matchManager.getAllMatches();
+                System.err.println("Fallo obteniendo partidos del servidor: " + ex.getMessage());
+                JOptionPane.showMessageDialog(this,
+                        "Servidor no disponible. Verifique que el backend esté en ejecución.",
+                        "Error", JOptionPane.ERROR_MESSAGE);
+            }
+        } else {
+            allMatches = matchManager.getAllMatches();
+        }
 
         // Ordenar partidos por fecha (los próximos primero)
         allMatches.sort((m1, m2) -> m1.getDate().compareTo(m2.getDate()));

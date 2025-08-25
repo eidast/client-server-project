@@ -3,6 +3,7 @@ package com.fidespn.view;
 import com.fidespn.model.Match;
 import com.fidespn.model.User;
 import com.fidespn.service.MatchManager;
+import com.fidespn.client.adapters.SocketMatchClient;
 import com.fidespn.service.UserManager;
 import com.fidespn.model.MatchEvent;
 
@@ -16,6 +17,9 @@ import java.util.List;
 public class CorrespondentDashboardFrame extends JFrame {
     private UserManager userManager;
     private MatchManager matchManager;
+    private boolean useServer = true; // Siempre cliente-servidor
+    private String socketToken;
+    private SocketMatchClient socketMatchClient;
     private User currentUser;
 
     private DefaultTableModel assignedMatchesTableModel;
@@ -49,6 +53,10 @@ public class CorrespondentDashboardFrame extends JFrame {
         initComponents();
         loadAssignedMatches();
         loadMatchCombo();
+    }
+
+    public void setSocketToken(String token) {
+        this.socketToken = token;
     }
 
     private void initComponents() {
@@ -254,7 +262,12 @@ public class CorrespondentDashboardFrame extends JFrame {
                     JOptionPane.showMessageDialog(this, "La descripción no puede estar vacía.", "Error", JOptionPane.ERROR_MESSAGE);
                     return;
                 }
-                matchManager.addMatchEvent(selectedMatch.getMatchId(), minute, type, desc);
+                if (useServer) {
+                    if (socketMatchClient == null) socketMatchClient = new SocketMatchClient("127.0.0.1", 5432, socketToken);
+                    socketMatchClient.addEvent(selectedMatch.getMatchId(), minute, type, desc);
+                } else {
+                    matchManager.addMatchEvent(selectedMatch.getMatchId(), minute, type, desc);
+                }
                 loadEventsForSelectedMatch();
                 descArea.setText("");
                 minuteSpinner.setValue(0);
@@ -263,7 +276,8 @@ public class CorrespondentDashboardFrame extends JFrame {
                     TrayNotifier.show("Nuevo evento", type + ": " + desc);
                 } catch (Exception ignored) {}
             } catch (Exception ex) {
-                JOptionPane.showMessageDialog(this, "Error al reportar evento: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+                String msg = useServer ? "Servidor no disponible. Verifique que el backend esté en ejecución." : ("Error al reportar evento: " + ex.getMessage());
+                JOptionPane.showMessageDialog(this, msg, "Error", JOptionPane.ERROR_MESSAGE);
             }
         });
 
@@ -434,8 +448,25 @@ public class CorrespondentDashboardFrame extends JFrame {
     private void loadEventsForSelectedMatch() {
         eventsTableModel.setRowCount(0);
         if (selectedMatch != null) {
-            for (MatchEvent ev : selectedMatch.getEvents()) {
-                eventsTableModel.addRow(new Object[]{ev.getMinute(), ev.getType(), ev.getDescription()});
+            if (useServer) {
+                try {
+                    if (socketMatchClient == null) socketMatchClient = new SocketMatchClient("127.0.0.1", 5432, socketToken);
+                    for (String[] row : socketMatchClient.getEvents(selectedMatch.getMatchId())) {
+                        int minute = Integer.parseInt(row[1]);
+                        String type = row[2];
+                        String desc = new String(java.util.Base64.getDecoder().decode(row[4]), java.nio.charset.StandardCharsets.UTF_8);
+                        eventsTableModel.addRow(new Object[]{minute, type, desc});
+                    }
+                } catch (Exception ex) {
+                    System.err.println("Fallo obteniendo eventos del servidor: " + ex.getMessage());
+                    JOptionPane.showMessageDialog(this,
+                            "Servidor no disponible. Verifique que el backend esté en ejecución.",
+                            "Error", JOptionPane.ERROR_MESSAGE);
+                }
+            } else {
+                for (MatchEvent ev : selectedMatch.getEvents()) {
+                    eventsTableModel.addRow(new Object[]{ev.getMinute(), ev.getType(), ev.getDescription()});
+                }
             }
         }
     }

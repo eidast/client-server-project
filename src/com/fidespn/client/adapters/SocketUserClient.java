@@ -8,6 +8,10 @@ import com.fidespn.client.net.SocketClient;
 public class SocketUserClient {
     private final SocketClient client;
     private String token;
+    private String userId;
+    private String role;
+    private String username;
+    private String email;
 
     public SocketUserClient(String host, int port) {
         this.client = new SocketClient(host, port);
@@ -20,6 +24,10 @@ public class SocketUserClient {
             // token,userId,role,username,email
             String[] parts = payload.split(",", -1);
             token = parts[0];
+            userId = parts.length>1?parts[1]:null;
+            role = parts.length>2?parts[2]:null;
+            this.username = parts.length>3?parts[3]:null;
+            email = parts.length>4?parts[4]:null;
             return token;
         }
         throw new IllegalStateException(parseErr(res));
@@ -36,6 +44,10 @@ public class SocketUserClient {
     }
 
     public String getToken() { return token; }
+    public String getUserId() { return userId; }
+    public String getRole() { return role; }
+    public String getUsername() { return username; }
+    public String getEmail() { return email; }
 
     private String parseErr(String res) {
         if (res.startsWith("ERR|")) return res.substring(4);

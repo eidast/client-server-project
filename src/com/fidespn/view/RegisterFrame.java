@@ -13,7 +13,7 @@ import java.awt.*;
  */
 public class RegisterFrame extends JFrame {
     private final UserManager userManager;
-    private boolean useServer = false; // Toggle for backend usage
+    private boolean useServer = true; // Toggle for backend usage
     private SocketUserClient socketUserClient;
 
     private JTextField usernameField;

@@ -8,7 +8,7 @@ import com.fidespn.service.exceptions.DuplicateUsernameException;
 import com.fidespn.service.exceptions.InvalidCredentialsException;
 import com.fidespn.service.exceptions.UserNotFoundException;
 
-import java.io.*;
+// Note: java.io.* import removed - no more .ser file operations
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -18,12 +18,10 @@ import java.util.UUID;
 public class UserManager {
     private Map<String, User> usersByUsername;
     private List<User> allUsers;
-    private static final String USERS_FILE = "users.ser";
-
     public UserManager() {
         this.usersByUsername = new HashMap<>();
         this.allUsers = new ArrayList<>();
-        loadUsers();
+        // Note: No more .ser file loading - data comes from server via socket adapters
     }
 
     public User registerUser(String username, String password, String email, String userType) throws DuplicateUsernameException {
@@ -50,7 +48,7 @@ public class UserManager {
 
         usersByUsername.put(username, newUser);
         allUsers.add(newUser);
-        saveUsers();
+        // Note: No more .ser saving - persistence handled by server
         System.out.println("Usuario registrado: " + newUser.getUsername() + " como " + userType);
         return newUser;
     }
@@ -101,7 +99,7 @@ public class UserManager {
             throw new UserNotFoundException("No se pudo actualizar el usuario con ID " + user.getUserId() + ". No encontrado.");
         }
         usersByUsername.put(user.getUsername(), user);
-        saveUsers();
+        // Note: No more .ser saving - persistence handled by server
         System.out.println("Usuario " + user.getUsername() + " actualizado.");
     }
 
@@ -145,7 +143,7 @@ public class UserManager {
             }
         }
 
-        saveUsers();
+        // Note: No more .ser saving - persistence handled by server
         System.out.println("Usuario actualizado: " + oldUsername + " -> " + newUsername);
         return updatedUser;
     }
@@ -171,7 +169,7 @@ public class UserManager {
         user.setPassword(newPassword);
         // Ensure the user map references the updated instance
         usersByUsername.put(username, user);
-        saveUsers();
+        // Note: No more .ser saving - persistence handled by server
         System.out.println("Contraseña restablecida para: " + username);
     }
 
@@ -187,7 +185,7 @@ public class UserManager {
         if (userToRemove != null) {
             allUsers.remove(userToRemove);
             usersByUsername.remove(userToRemove.getUsername());
-            saveUsers();
+            // Note: No more .ser saving - persistence handled by server
             System.out.println("Usuario con ID " + userId + " eliminado.");
         } else {
             throw new UserNotFoundException("Usuario con ID " + userId + " no encontrado para eliminar.");
@@ -202,40 +200,9 @@ public class UserManager {
 
         allUsers.remove(userToRemove);
         usersByUsername.remove(username);
-        saveUsers();
+        // Note: No more .ser saving - persistence handled by server
         System.out.println("Usuario " + username + " eliminado.");
     }
 
-    private void saveUsers() {
-        try (ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream(USERS_FILE))) {
-            oos.writeObject(allUsers);
-            System.out.println("Usuarios guardados en " + USERS_FILE);
-        } catch (IOException e) {
-            System.err.println("Error al guardar usuarios: " + e.getMessage());
-        }
-    }
-
-    @SuppressWarnings("unchecked")
-    private void loadUsers() {
-        File file = new File(USERS_FILE);
-        if (file.exists()) {
-            try (ObjectInputStream ois = new ObjectInputStream(new FileInputStream(USERS_FILE))) {
-                Object obj = ois.readObject();
-                if (obj instanceof List) {
-                    this.allUsers = (List<User>) obj;
-                    this.usersByUsername.clear();
-                    for (User user : allUsers) {
-                        this.usersByUsername.put(user.getUsername(), user);
-                    }
-                    System.out.println("Usuarios cargados desde " + USERS_FILE);
-                }
-            } catch (IOException | ClassNotFoundException e) {
-                System.err.println("Error al cargar usuarios: " + e.getMessage());
-                this.usersByUsername = new HashMap<>();
-                this.allUsers = new ArrayList<>();
-            }
-        } else {
-            System.out.println("Archivo de usuarios no encontrado. Iniciando con usuarios vacíos.");
-        }
-    }
+    // Note: saveUsers() and loadUsers() removed - persistence now handled by server via Derby
 }
