@@ -115,8 +115,6 @@ La aplicación incluye usuarios de demostración preconfigurados que se crean au
 - Navegación intuitiva entre ventanas
 - Botones estilizados y efectos visuales
 
-### 🔄 Funcionalidades en Desarrollo
-
 En esta versión no hay funcionalidades pendientes. Las planificadas fueron implementadas.
 
 #### Novedades recientes
@@ -292,6 +290,6 @@ Para preguntas o soporte, contacta al equipo de desarrollo de FidESPN United 202
 
 ---
 
-**Versión**: 2.0  
-**Última actualización**: Julio 2025  
+**Versión**: 3.0  
+**Última actualización**: Agosto 2025  
 **Estado**: Funcionalidades principales completadas 
