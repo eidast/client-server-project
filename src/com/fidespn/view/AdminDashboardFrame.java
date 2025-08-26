@@ -5,6 +5,7 @@ import com.fidespn.model.User;
 import com.fidespn.model.Administrator; // <--- AGREGADO
 import com.fidespn.model.Correspondent; // <--- AGREGADO
 import com.fidespn.model.Fanatic;       // <--- AGREGADO
+import com.fidespn.client.adapters.SocketUserClient;
 import com.fidespn.service.MatchManager;
 import com.fidespn.service.UserManager;
 import com.fidespn.service.exceptions.MatchNotFoundException;
@@ -24,6 +25,9 @@ import java.util.Date;
 public class AdminDashboardFrame extends JFrame {
     private UserManager userManager;
     private MatchManager matchManager;
+    private boolean useServer = true; // Siempre cliente-servidor para CRUD de usuarios
+    private String socketToken;
+    private SocketUserClient socketUserClient;
 
     private DefaultTableModel matchesTableModel;
     private JTable matchesTable;
@@ -39,6 +43,12 @@ public class AdminDashboardFrame extends JFrame {
         setLocationRelativeTo(null);
         setResizable(true);
         initComponents();
+        loadDataIntoTables();
+    }
+
+    public void setSocketToken(String token) {
+        this.socketToken = token;
+        // Refrescar datos al tener token disponible
         loadDataIntoTables();
     }
 
@@ -430,9 +440,14 @@ public class AdminDashboardFrame extends JFrame {
                         break;
                 }
 
-                User newUser = userManager.registerUser(username, password, email, userTypeForManager);
-                
-                messageLabel.setText("Usuario creado exitosamente: " + newUser.getUsername());
+                if (useServer) {
+                    if (socketUserClient == null) socketUserClient = new SocketUserClient("127.0.0.1", 5432);
+                    socketUserClient.setToken(socketToken);
+                    socketUserClient.createUser(username, password, email, userTypeForManager);
+                } else {
+                    userManager.registerUser(username, password, email, userTypeForManager);
+                }
+                messageLabel.setText("Usuario creado exitosamente: " + username);
                 messageLabel.setForeground(new Color(34, 197, 94));
                 
                 // Recargar la tabla de usuarios
@@ -639,9 +654,19 @@ public class AdminDashboardFrame extends JFrame {
                         break;
                 }
 
-                                 User updatedUser = userManager.updateUserByUsername(username, newUsername, newPassword, newEmail, userTypeForManager);
-                
-                messageLabel.setText("Usuario actualizado exitosamente: " + updatedUser.getUsername());
+                if (useServer) {
+                    if (socketUserClient == null) socketUserClient = new SocketUserClient("127.0.0.1", 5432);
+                    socketUserClient.setToken(socketToken);
+                    // Necesitamos el id del usuario; como la tabla muestra username, hacemos lookup simple en GET_USERS
+                    java.util.List<String[]> rows = socketUserClient.getUsers();
+                    String id = null;
+                    for (String[] r : rows) { if (r[1].equals(username)) { id = r[0]; break; } }
+                    if (id == null) throw new RuntimeException("Usuario no encontrado");
+                    socketUserClient.updateUser(id, newUsername, newPassword, newEmail, userTypeForManager);
+                } else {
+                    userManager.updateUserByUsername(username, newUsername, newPassword, newEmail, userTypeForManager);
+                }
+                messageLabel.setText("Usuario actualizado exitosamente: " + newUsername);
                 messageLabel.setForeground(new Color(34, 197, 94));
                 
                 // Recargar la tabla de usuarios
@@ -731,7 +756,17 @@ public class AdminDashboardFrame extends JFrame {
         // Listeners
         confirmButton.addActionListener(e -> {
             try {
-                userManager.deleteUserByUsername(username);
+                if (useServer) {
+                    if (socketUserClient == null) socketUserClient = new SocketUserClient("127.0.0.1", 5432);
+                    socketUserClient.setToken(socketToken);
+                    java.util.List<String[]> rows = socketUserClient.getUsers();
+                    String id = null;
+                    for (String[] r : rows) { if (r[1].equals(username)) { id = r[0]; break; } }
+                    if (id == null) throw new RuntimeException("Usuario no encontrado");
+                    socketUserClient.deleteUser(id);
+                } else {
+                    userManager.deleteUserByUsername(username);
+                }
                 JOptionPane.showMessageDialog(this, 
                     "Usuario " + username + " eliminado exitosamente.", 
                     "Eliminación Exitosa", 
@@ -790,18 +825,34 @@ public class AdminDashboardFrame extends JFrame {
         }
 
         usersTableModel.setRowCount(0);
-        List<User> users = userManager.getAllUsers();
-        for (User user : users) {
-            String role = "Desconocido";
-            // Aquí es donde se necesitaban los imports
-            if (user instanceof Administrator) {
-                role = "Administrador";
-            } else if (user instanceof Correspondent) {
-                role = "Corresponsal";
-            } else if (user instanceof Fanatic) {
-                role = "Fanático";
+        try {
+            if (useServer && socketToken != null && !socketToken.isEmpty()) {
+                if (socketUserClient == null) socketUserClient = new SocketUserClient("127.0.0.1", 5432);
+                socketUserClient.setToken(socketToken);
+                java.util.List<String[]> rows = socketUserClient.getUsers();
+                for (String[] r : rows) {
+                    // r: id,username,email,role
+                    String username = r[1];
+                    String email = r[2];
+                    String role = r[3];
+                    String roleLabel = "Desconocido";
+                    if ("admin".equalsIgnoreCase(role)) roleLabel = "Administrador";
+                    else if ("correspondent".equalsIgnoreCase(role)) roleLabel = "Corresponsal";
+                    else if ("fanatic".equalsIgnoreCase(role)) roleLabel = "Fanático";
+                    usersTableModel.addRow(new Object[]{username, roleLabel, email, ""});
+                }
+            } else {
+                List<User> users = userManager.getAllUsers();
+                for (User user : users) {
+                    String role = "Desconocido";
+                    if (user instanceof Administrator) role = "Administrador";
+                    else if (user instanceof Correspondent) role = "Corresponsal";
+                    else if (user instanceof Fanatic) role = "Fanático";
+                    usersTableModel.addRow(new Object[]{user.getUsername(), role, user.getEmail(), ""});
+                }
             }
-            usersTableModel.addRow(new Object[]{user.getUsername(), role, user.getEmail(), ""});
+        } catch (Exception ex) {
+            JOptionPane.showMessageDialog(this, "Error al cargar usuarios: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
         }
     }
 

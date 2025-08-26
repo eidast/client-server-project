@@ -117,6 +117,16 @@ public class ServerApp {
                     return handleGetEvents(parts);
                 case "ADD_EVENT":
                     return handleAddEvent(parts);
+                case "UPDATE_FAVORITES":
+                    return handleUpdateFavorites(parts);
+                case "GET_USERS":
+                    return handleGetUsers(parts);
+                case "CREATE_USER":
+                    return handleCreateUser(parts);
+                case "UPDATE_USER":
+                    return handleUpdateUser(parts);
+                case "DELETE_USER":
+                    return handleDeleteUser(parts);
                 default:
                     return err("UNKNOWN_CMD", "Comando no soportado: " + cmd);
             }
@@ -158,7 +168,7 @@ public class ServerApp {
     private String handleGetEvents(String[] p) throws Exception {
         if (p.length < 2) return err("BAD_REQUEST", "GET_EVENTS|matchId");
         String matchId = p[1];
-        try (var c = DerbyUtil.getConnection(); var ps = c.prepareStatement("SELECT event_id,minute,type,ts,description FROM match_events WHERE match_id=? ORDER BY ts")) {
+        try (var c = DerbyUtil.getConnection(); var ps = c.prepareStatement("SELECT event_id,event_minute,type,ts,description FROM match_events WHERE match_id=? ORDER BY ts")) {
             ps.setString(1, matchId);
             try (var rs = ps.executeQuery()) {
                 StringBuilder sb = new StringBuilder();
@@ -186,7 +196,7 @@ public class ServerApp {
         String type = p[4];
         String desc = new String(java.util.Base64.getDecoder().decode(p[5]), java.nio.charset.StandardCharsets.UTF_8);
         String eventId = java.util.UUID.randomUUID().toString();
-        try (var c = DerbyUtil.getConnection(); var ps = c.prepareStatement("INSERT INTO match_events(event_id,match_id,minute,type,description,ts) VALUES(?,?,?,?,?,CURRENT_TIMESTAMP)")) {
+        try (var c = DerbyUtil.getConnection(); var ps = c.prepareStatement("INSERT INTO match_events(event_id,match_id,event_minute,type,description,ts) VALUES(?,?,?,?,?,CURRENT_TIMESTAMP)")) {
             ps.setString(1, eventId);
             ps.setString(2, matchId);
             ps.setInt(3, minute);
@@ -195,6 +205,40 @@ public class ServerApp {
             ps.executeUpdate();
         }
         return ok(eventId);
+    }
+
+    private String handleUpdateFavorites(String[] p) throws Exception {
+        // UPDATE_FAVORITES|token|userId|team1,team2,... (empty allowed)
+        if (p.length < 4) return err("BAD_REQUEST", "UPDATE_FAVORITES|token|userId|team1,team2,...");
+        String token = p[1];
+        if (!tokenToUser.containsKey(token)) return err("UNAUTHORIZED", "Token inválido");
+        String userIdFromToken = tokenToUser.get(token);
+        String userId = p[2];
+        if (userId == null || userId.isEmpty()) return err("BAD_REQUEST", "userId requerido");
+        if (!userIdFromToken.equals(userId)) return err("FORBIDDEN", "Token no pertenece al usuario");
+        String csv = p[3];
+
+        String[] teams = csv == null || csv.isEmpty() ? new String[0] : csv.split(",");
+        try (var c = DerbyUtil.getConnection()) {
+            c.setAutoCommit(false);
+            try (var del = c.prepareStatement("DELETE FROM favorites WHERE user_id=?")) {
+                del.setString(1, userId);
+                del.executeUpdate();
+            }
+            if (teams.length > 0) {
+                try (var ins = c.prepareStatement("INSERT INTO favorites(user_id,team_id) VALUES(?,?)")) {
+                    for (String t : teams) {
+                        if (t == null || t.isEmpty()) continue;
+                        ins.setString(1, userId);
+                        ins.setString(2, t);
+                        ins.addBatch();
+                    }
+                    ins.executeBatch();
+                }
+            }
+            c.commit();
+        }
+        return ok("");
     }
 
     private String handleLogin(String[] p) throws Exception {
@@ -265,6 +309,104 @@ public class ServerApp {
                 return ok("");
             }
         }
+    }
+
+    private boolean isAdmin(String token) throws Exception {
+        String userId = tokenToUser.get(token);
+        if (userId == null) return false;
+        try (var c = DerbyUtil.getConnection(); var ps = c.prepareStatement("SELECT role FROM users WHERE id=?")) {
+            ps.setString(1, userId);
+            try (var rs = ps.executeQuery()) {
+                if (!rs.next()) return false;
+                String role = rs.getString(1);
+                return role != null && role.equalsIgnoreCase("admin");
+            }
+        }
+    }
+
+    private String handleGetUsers(String[] p) throws Exception {
+        if (p.length < 2) return err("BAD_REQUEST", "GET_USERS|token");
+        String token = p[1];
+        if (!isAdmin(token)) return err("FORBIDDEN", "Solo admin");
+        try (var c = DerbyUtil.getConnection(); var rs = c.createStatement().executeQuery("SELECT id,username,email,role FROM users ORDER BY username")) {
+            StringBuilder sb = new StringBuilder();
+            while (rs.next()) {
+                if (sb.length() > 0) sb.append('\n');
+                sb.append(rs.getString(1)).append(',')
+                  .append(rs.getString(2)).append(',')
+                  .append(rs.getString(3)).append(',')
+                  .append(rs.getString(4));
+            }
+            return ok(sb.toString());
+        }
+    }
+
+    private String handleCreateUser(String[] p) throws Exception {
+        if (p.length < 6) return err("BAD_REQUEST", "CREATE_USER|token|username|password|email|role");
+        String token = p[1];
+        if (!isAdmin(token)) return err("FORBIDDEN", "Solo admin");
+        String username = p[2];
+        String password = p[3];
+        String email = p[4];
+        String role = p[5];
+        String id = java.util.UUID.randomUUID().toString();
+        try (var c = DerbyUtil.getConnection()) {
+            try (var check = c.prepareStatement("SELECT 1 FROM users WHERE username=?")) {
+                check.setString(1, username);
+                try (var rs = check.executeQuery()) { if (rs.next()) return err("DUPLICATE", "El nombre de usuario ya existe"); }
+            }
+            try (var ps = c.prepareStatement("INSERT INTO users(id,username,password,email,role) VALUES(?,?,?,?,?)")) {
+                ps.setString(1, id);
+                ps.setString(2, username);
+                ps.setString(3, password);
+                ps.setString(4, email);
+                ps.setString(5, role);
+                ps.executeUpdate();
+            }
+        }
+        return ok(id);
+    }
+
+    private String handleUpdateUser(String[] p) throws Exception {
+        if (p.length < 7) return err("BAD_REQUEST", "UPDATE_USER|token|id|username|password|email|role");
+        String token = p[1];
+        if (!isAdmin(token)) return err("FORBIDDEN", "Solo admin");
+        String id = p[2];
+        String username = p[3];
+        String password = p[4];
+        String email = p[5];
+        String role = p[6];
+        try (var c = DerbyUtil.getConnection()) {
+            // Ensure unique username for other users
+            try (var check = c.prepareStatement("SELECT 1 FROM users WHERE username=? AND id<>?")) {
+                check.setString(1, username);
+                check.setString(2, id);
+                try (var rs = check.executeQuery()) { if (rs.next()) return err("DUPLICATE", "El nombre de usuario ya existe"); }
+            }
+            try (var ps = c.prepareStatement("UPDATE users SET username=?, password=?, email=?, role=? WHERE id=?")) {
+                ps.setString(1, username);
+                ps.setString(2, password);
+                ps.setString(3, email);
+                ps.setString(4, role);
+                ps.setString(5, id);
+                int n = ps.executeUpdate();
+                if (n == 0) return err("NOT_FOUND", "Usuario no encontrado");
+            }
+        }
+        return ok("");
+    }
+
+    private String handleDeleteUser(String[] p) throws Exception {
+        if (p.length < 3) return err("BAD_REQUEST", "DELETE_USER|token|id");
+        String token = p[1];
+        if (!isAdmin(token)) return err("FORBIDDEN", "Solo admin");
+        String id = p[2];
+        try (var c = DerbyUtil.getConnection(); var ps = c.prepareStatement("DELETE FROM users WHERE id=?")) {
+            ps.setString(1, id);
+            int n = ps.executeUpdate();
+            if (n == 0) return err("NOT_FOUND", "Usuario no encontrado");
+        }
+        return ok("");
     }
 
     private static String ok(String payload) { return payload == null || payload.isEmpty() ? "OK" : "OK|" + payload; }

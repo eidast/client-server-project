@@ -4,6 +4,7 @@ import com.fidespn.model.Fanatic;
 import com.fidespn.model.Team;
 import com.fidespn.service.MatchManager;
 import com.fidespn.service.UserManager;
+import com.fidespn.client.adapters.SocketUserClient;
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
@@ -22,6 +23,10 @@ public class ManageFavoriteTeamsFrame extends JFrame {
     private JButton saveButton;
     private JButton cancelButton;
 
+    private boolean useServer = true;
+    private String socketToken;
+    private SocketUserClient socketUserClient;
+
     public ManageFavoriteTeamsFrame(UserManager userManager, MatchManager matchManager, Fanatic currentFanatic, FanaticDashboardFrame parentFrame) {
         this.userManager = userManager;
         this.matchManager = matchManager;
@@ -36,6 +41,10 @@ public class ManageFavoriteTeamsFrame extends JFrame {
         
         initComponents();
         loadTeams();
+    }
+
+    public void setSocketToken(String token) {
+        this.socketToken = token;
     }
 
     private void initComponents() {
@@ -167,18 +176,24 @@ public class ManageFavoriteTeamsFrame extends JFrame {
             }
         }
 
-        // Guardar cambios en el UserManager
+        // Persistir cambios mediante servidor
         try {
-            userManager.updateUser(currentFanatic);
-            
-            JOptionPane.showMessageDialog(this, 
-                "Tus equipos favoritos han sido actualizados correctamente.", 
-                "Cambios Guardados", 
+            if (useServer) {
+                if (socketUserClient == null) socketUserClient = new SocketUserClient("127.0.0.1", 5432);
+                if (this.socketToken != null && !this.socketToken.isEmpty()) socketUserClient.setToken(this.socketToken);
+                socketUserClient.updateFavorites(currentFanatic.getUserId(), currentFanatic.getFavoriteTeamIds());
+            } else {
+                // Fallback local (no recomendado en modo cliente-servidor)
+                userManager.updateUser(currentFanatic);
+            }
+            JOptionPane.showMessageDialog(this,
+                "Tus equipos favoritos han sido actualizados correctamente.",
+                "Cambios Guardados",
                 JOptionPane.INFORMATION_MESSAGE);
-        } catch (com.fidespn.service.exceptions.UserNotFoundException e) {
-            JOptionPane.showMessageDialog(this, 
-                "Error al actualizar el usuario: " + e.getMessage(), 
-                "Error", 
+        } catch (Exception e) {
+            JOptionPane.showMessageDialog(this,
+                "Servidor no disponible o error al actualizar favoritos: " + e.getMessage(),
+                "Error",
                 JOptionPane.ERROR_MESSAGE);
         }
         

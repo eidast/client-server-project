@@ -91,7 +91,9 @@ public class FanaticDashboardFrame extends JFrame {
         manageButtonPanel.setOpaque(false);
         JButton manageTeamsBtn = createStyledButton("Gestionar", new Color(156, 163, 175)); // bg-gray-200, text-gray-700
         manageTeamsBtn.addActionListener(e -> {
-            new ManageFavoriteTeamsFrame(userManager, matchManager, currentFanatic, this).setVisible(true);
+            ManageFavoriteTeamsFrame m = new ManageFavoriteTeamsFrame(userManager, matchManager, currentFanatic, this);
+            m.setSocketToken(socketToken);
+            m.setVisible(true);
         });
         manageButtonPanel.add(manageTeamsBtn);
         favoriteTeamsSectionPanel.add(manageButtonPanel, BorderLayout.SOUTH);

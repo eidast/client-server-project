@@ -38,12 +38,47 @@ public class SocketUserClient {
         if (!res.startsWith("OK")) throw new IllegalStateException(parseErr(res));
     }
 
+    // Admin CRUD
+    public java.util.List<String[]> getUsers() throws Exception {
+        String res = client.send("GET_USERS|" + token);
+        if (!res.startsWith("OK")) throw new IllegalStateException(parseErr(res));
+        String payload = res.length()>3 && res.startsWith("OK|") ? res.substring(3) : "";
+        java.util.List<String[]> rows = new java.util.ArrayList<>();
+        if (payload.isEmpty()) return rows;
+        for (String line : payload.split("\n")) rows.add(line.split(",", -1));
+        return rows;
+    }
+
+    public String createUser(String username, String password, String email, String role) throws Exception {
+        String res = client.send("CREATE_USER|" + token + "|" + username + "|" + password + "|" + email + "|" + role);
+        if (res.startsWith("OK|")) return res.substring(3);
+        if (res.equals("OK")) return "";
+        throw new IllegalStateException(parseErr(res));
+    }
+
+    public void updateUser(String id, String username, String password, String email, String role) throws Exception {
+        String res = client.send("UPDATE_USER|" + token + "|" + id + "|" + username + "|" + password + "|" + email + "|" + role);
+        if (!res.startsWith("OK")) throw new IllegalStateException(parseErr(res));
+    }
+
+    public void deleteUser(String id) throws Exception {
+        String res = client.send("DELETE_USER|" + token + "|" + id);
+        if (!res.startsWith("OK")) throw new IllegalStateException(parseErr(res));
+    }
+
     public void resetPassword(String username, String email, String newPassword) throws Exception {
         String res = client.send("RESET_PASSWORD|" + username + "|" + email + "|" + newPassword);
         if (!res.startsWith("OK")) throw new IllegalStateException(parseErr(res));
     }
 
+    public void updateFavorites(String userId, java.util.List<String> teamIds) throws Exception {
+        String csv = String.join(",", teamIds == null ? java.util.Collections.emptyList() : teamIds);
+        String res = client.send("UPDATE_FAVORITES|" + token + "|" + userId + "|" + csv);
+        if (!res.startsWith("OK")) throw new IllegalStateException(parseErr(res));
+    }
+
     public String getToken() { return token; }
+    public void setToken(String token) { this.token = token; }
     public String getUserId() { return userId; }
     public String getRole() { return role; }
     public String getUsername() { return username; }
