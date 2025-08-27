@@ -27,6 +27,7 @@ public class FanaticDashboardFrame extends JFrame {
     private JPanel favoriteTeamsPanel; // Panel para mostrar los equipos favoritos
     private DefaultTableModel matchesTableModel;
     private JTable matchesTable;
+    private java.util.List<Match> displayedMatches = new java.util.ArrayList<>();
 
     public FanaticDashboardFrame(UserManager userManager, MatchManager matchManager, User currentUser) {
         this.userManager = userManager;
@@ -152,10 +153,11 @@ public class FanaticDashboardFrame extends JFrame {
         viewDetailsBtn.addActionListener(e -> {
             int selectedRow = matchesTable.getSelectedRow();
             if (selectedRow != -1) {
-                String matchName = (String) matchesTableModel.getValueAt(selectedRow, 0);
-                Match selectedMatch = findMatchByName(matchName);
-                if (selectedMatch != null) {
-                    new LiveMatchFrame(userManager, matchManager, currentFanatic, selectedMatch).setVisible(true);
+                if (selectedRow >= 0 && selectedRow < displayedMatches.size()) {
+                    Match selectedMatch = displayedMatches.get(selectedRow);
+                    LiveMatchFrame f = new LiveMatchFrame(userManager, matchManager, currentFanatic, selectedMatch);
+                    f.setSocketToken(socketToken);
+                    f.setVisible(true);
                     this.dispose();
                 } else {
                     JOptionPane.showMessageDialog(this, "No se pudo encontrar el partido seleccionado.", "Error", JOptionPane.ERROR_MESSAGE);
@@ -289,6 +291,8 @@ public class FanaticDashboardFrame extends JFrame {
                     m.setStatus(status);
                     allMatches.add(m);
                 }
+                displayedMatches.clear();
+                displayedMatches.addAll(allMatches);
             } catch (Exception ex) {
                 allMatches = matchManager.getAllMatches();
                 System.err.println("Fallo obteniendo partidos del servidor: " + ex.getMessage());
@@ -313,11 +317,9 @@ public class FanaticDashboardFrame extends JFrame {
 
     // Método auxiliar para obtener un partido por su nombre (para el botón "Ver Detalles")
     private Match findMatchByName(String matchName) {
-        for (Match match : matchManager.getAllMatches()) {
+        for (Match match : displayedMatches.isEmpty() ? matchManager.getAllMatches() : displayedMatches) {
             String currentMatchName = match.getHomeTeam().getName() + " vs " + match.getAwayTeam().getName();
-            if (currentMatchName.equals(matchName)) {
-                return match;
-            }
+            if (currentMatchName.equals(matchName)) return match;
         }
         return null;
     }

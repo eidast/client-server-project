@@ -125,6 +125,8 @@ public class ServerApp {
                     return handleCreateMatch(parts);
                 case "DELETE_MATCH":
                     return handleDeleteMatch(parts);
+                case "UPDATE_MATCH":
+                    return handleUpdateMatch(parts);
                 case "GET_USERS":
                     return handleGetUsers(parts);
                 case "CREATE_USER":
@@ -303,6 +305,41 @@ public class ServerApp {
             try (var delEv = c.prepareStatement("DELETE FROM match_events WHERE match_id=?")) { delEv.setString(1, matchId); delEv.executeUpdate(); }
             try (var delChat = c.prepareStatement("DELETE FROM chat_messages WHERE match_id=?")) { delChat.setString(1, matchId); delChat.executeUpdate(); }
             try (var del = c.prepareStatement("DELETE FROM matches WHERE match_id=?")) { del.setString(1, matchId); int n = del.executeUpdate(); if (n==0) return err("NOT_FOUND","Partido no encontrado"); }
+        }
+        return ok("");
+    }
+
+    private String handleUpdateMatch(String[] p) throws Exception {
+        // UPDATE_MATCH|token|matchId|dateMillis|time|homeId|awayId|correspondentUsername|status
+        if (p.length < 9) return err("BAD_REQUEST", "UPDATE_MATCH|token|matchId|dateMillis|time|homeId|awayId|correspondentUsername|status");
+        String token = p[1];
+        if (!isAdmin(token)) return err("FORBIDDEN", "Solo admin");
+        String matchId = p[2];
+        long dateMillis = Long.parseLong(p[3]);
+        String timeTxt = p[4];
+        String homeId = p[5];
+        String awayId = p[6];
+        String corrUsername = p[7];
+        String status = p[8];
+        String corrId = null;
+        try (var c = DerbyUtil.getConnection()) {
+            if (corrUsername != null && !corrUsername.isEmpty()) {
+                try (var ps = c.prepareStatement("SELECT id FROM users WHERE username=?")) {
+                    ps.setString(1, corrUsername);
+                    try (var rs = ps.executeQuery()) { if (rs.next()) corrId = rs.getString(1); }
+                }
+            }
+            try (var ps = c.prepareStatement("UPDATE matches SET date_ts=?, time_txt=?, home_team_id=?, away_team_id=?, correspondent_id=?, status=? WHERE match_id=?")) {
+                ps.setTimestamp(1, new java.sql.Timestamp(dateMillis));
+                ps.setString(2, timeTxt);
+                ps.setString(3, homeId);
+                ps.setString(4, awayId);
+                ps.setString(5, corrId);
+                ps.setString(6, status);
+                ps.setString(7, matchId);
+                int n = ps.executeUpdate();
+                if (n==0) return err("NOT_FOUND","Partido no encontrado");
+            }
         }
         return ok("");
     }

@@ -74,6 +74,11 @@ public class SocketMatchClient {
         if (!res.startsWith("OK")) throw new IllegalStateException(parseErr(res));
     }
 
+    public void updateMatch(String matchId, long dateMillis, String time, String homeId, String awayId, String correspondentUsername, String status) throws Exception {
+        String res = client.send("UPDATE_MATCH|" + token + "|" + matchId + "|" + dateMillis + "|" + time + "|" + homeId + "|" + awayId + "|" + correspondentUsername + "|" + status);
+        if (!res.startsWith("OK")) throw new IllegalStateException(parseErr(res));
+    }
+
     private String parseErr(String res) {
         if (res.startsWith("ERR|")) return res.substring(4);
         return res;

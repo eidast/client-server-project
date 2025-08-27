@@ -39,6 +39,12 @@ public class CorrespondentDashboardFrame extends JFrame {
     private JLabel completedReportsLabel;
     private JLabel pendingReportsLabel;
 
+    // Datos respaldados desde servidor
+    private java.util.List<String[]> assignedMatchRows = new java.util.ArrayList<>();
+    private java.util.List<String> assignedMatchIds = new java.util.ArrayList<>();
+    private java.util.Map<String, String> teamIdToName = new java.util.HashMap<>();
+    private String selectedMatchId;
+
     public CorrespondentDashboardFrame(UserManager userManager, MatchManager matchManager, User currentUser) {
         this.userManager = userManager;
         this.matchManager = matchManager;
@@ -51,12 +57,21 @@ public class CorrespondentDashboardFrame extends JFrame {
         setResizable(true);
 
         initComponents();
-        loadAssignedMatches();
-        loadMatchCombo();
     }
 
     public void setSocketToken(String token) {
         this.socketToken = token;
+        try {
+            if (useServer && socketToken != null && !socketToken.isEmpty()) {
+                if (socketMatchClient == null) socketMatchClient = new SocketMatchClient("127.0.0.1", 5432, socketToken);
+                loadAssignedMatches();
+                loadMatchCombo();
+            }
+        } catch (Exception ex) {
+            JOptionPane.showMessageDialog(this,
+                    "Servidor no disponible. Verifique que el backend esté en ejecución.",
+                    "Error", JOptionPane.ERROR_MESSAGE);
+        }
     }
 
     private void initComponents() {
@@ -227,30 +242,22 @@ public class CorrespondentDashboardFrame extends JFrame {
 
         this.setContentPane(mainPanel);
 
-        // Poblar el combo de partidos asignados
-        loadMatchCombo();
         // Listener para seleccionar partido desde el combo
         matchCombo.addActionListener(e -> {
             int idx = matchCombo.getSelectedIndex();
-            if (idx != -1) {
-                String matchName = (String) matchCombo.getSelectedItem();
-                for (Match m : matchManager.getAllMatches()) {
-                    String desc = m.getHomeTeam().getName() + " vs " + m.getAwayTeam().getName();
-                    if (desc.equals(matchName) && m.getCorrespondentId() != null && m.getCorrespondentId().equals(currentUser.getUserId())) {
-                        selectedMatch = m;
-                        loadEventsForSelectedMatch();
-                        break;
-                    }
-                }
+            if (idx != -1 && idx < assignedMatchIds.size()) {
+                selectedMatchId = assignedMatchIds.get(idx);
+                loadEventsForSelectedMatch();
             } else {
                 selectedMatch = null;
+                selectedMatchId = null;
                 eventsTableModel.setRowCount(0);
             }
         });
 
         // Listener para Enviar Reporte
         enviarBtn.addActionListener(e -> {
-            if (selectedMatch == null) {
+            if (selectedMatchId == null || selectedMatchId.isEmpty()) {
                 JOptionPane.showMessageDialog(this, "Seleccione un partido para reportar evento.", "Error", JOptionPane.ERROR_MESSAGE);
                 return;
             }
@@ -264,9 +271,9 @@ public class CorrespondentDashboardFrame extends JFrame {
                 }
                 if (useServer) {
                     if (socketMatchClient == null) socketMatchClient = new SocketMatchClient("127.0.0.1", 5432, socketToken);
-                    socketMatchClient.addEvent(selectedMatch.getMatchId(), minute, type, desc);
+                    socketMatchClient.addEvent(selectedMatchId, minute, type, desc);
                 } else {
-                    matchManager.addMatchEvent(selectedMatch.getMatchId(), minute, type, desc);
+                    // Local mode no longer supported for events
                 }
                 loadEventsForSelectedMatch();
                 descArea.setText("");
@@ -408,50 +415,64 @@ public class CorrespondentDashboardFrame extends JFrame {
     private void loadAssignedMatches() {
         assignedMatchesTableModel.setRowCount(0);
         SimpleDateFormat sdf = new SimpleDateFormat("dd MMM yyyy | hh:mm a");
-        
-        List<Match> allMatches = matchManager.getAllMatches();
+
         int totalMatches = 0;
         int completedReports = 0;
         int pendingReports = 0;
 
-        for (Match match : allMatches) {
-            if (match.getCorrespondentId() != null && match.getCorrespondentId().equals(currentUser.getUserId())) {
-                totalMatches++;
-                
-                String matchName = match.getHomeTeam().getName() + " vs " + match.getAwayTeam().getName();
-                String dateTime = sdf.format(match.getDate()) + " (CR)";
-                String status = "Programado";
-                String reportProgress = "Pendiente";
-
-                // Simular progreso del reporte (en una implementación real, esto vendría de la base de datos)
-                if (match.getDate().before(new java.util.Date())) {
-                    status = "En Curso";
-                    if (Math.random() > 0.5) {
-                        reportProgress = "Completado";
-                        completedReports++;
-                    } else {
-                        reportProgress = "En Progreso";
-                        pendingReports++;
+        try {
+            if (useServer && socketToken != null && !socketToken.isEmpty()) {
+                if (socketMatchClient == null) socketMatchClient = new SocketMatchClient("127.0.0.1", 5432, socketToken);
+                ensureTeamMap();
+                assignedMatchRows.clear();
+                assignedMatchIds.clear();
+                List<String[]> rows = socketMatchClient.getMatches();
+                for (String[] r : rows) {
+                    String corrId = r.length > 8 ? r[8] : null;
+                    if (corrId != null && corrId.equals(currentUser.getUserId())) {
+                        totalMatches++;
+                        String homeId = r[3];
+                        String awayId = r[4];
+                        String homeName = teamIdToName.getOrDefault(homeId, homeId);
+                        String awayName = teamIdToName.getOrDefault(awayId, awayId);
+                        String matchName = homeName + " vs " + awayName;
+                        String dateTime = sdf.format(new java.util.Date(Long.parseLong(r[1]))) + " (CR)";
+                        String status = r[7];
+                        String reportProgress = status.equalsIgnoreCase("finished") ? "Completado" : (status.equalsIgnoreCase("live") ? "En Progreso" : "Pendiente");
+                        if (reportProgress.equals("Completado")) completedReports++; else pendingReports++;
+                        assignedMatchesTableModel.addRow(new Object[]{matchName, dateTime, status, reportProgress});
+                        assignedMatchRows.add(r);
+                        assignedMatchIds.add(r[0]);
                     }
-                } else {
-                    pendingReports++;
                 }
-
-                assignedMatchesTableModel.addRow(new Object[]{matchName, dateTime, status, reportProgress});
+            } else {
+                List<Match> allMatches = matchManager.getAllMatches();
+                for (Match match : allMatches) {
+                    if (match.getCorrespondentId() != null && match.getCorrespondentId().equals(currentUser.getUserId())) {
+                        totalMatches++;
+                        String matchName = match.getHomeTeam().getName() + " vs " + match.getAwayTeam().getName();
+                        String dateTime = sdf.format(match.getDate()) + " (CR)";
+                        String status = match.getStatus();
+                        String reportProgress = status.equalsIgnoreCase("finished") ? "Completado" : (status.equalsIgnoreCase("live") ? "En Progreso" : "Pendiente");
+                        if (reportProgress.equals("Completado")) completedReports++; else pendingReports++;
+                        assignedMatchesTableModel.addRow(new Object[]{matchName, dateTime, status, reportProgress});
+                    }
+                }
             }
+        } catch (Exception ex) {
+            System.err.println("Error cargando partidos asignados: " + ex.getMessage());
         }
 
-        // Actualizar estadísticas
         updateStatistics(totalMatches, completedReports, pendingReports);
     }
 
     private void loadEventsForSelectedMatch() {
         eventsTableModel.setRowCount(0);
-        if (selectedMatch != null) {
+        if (selectedMatchId != null && !selectedMatchId.isEmpty()) {
             if (useServer) {
                 try {
                     if (socketMatchClient == null) socketMatchClient = new SocketMatchClient("127.0.0.1", 5432, socketToken);
-                    for (String[] row : socketMatchClient.getEvents(selectedMatch.getMatchId())) {
+                    for (String[] row : socketMatchClient.getEvents(selectedMatchId)) {
                         int minute = Integer.parseInt(row[1]);
                         String type = row[2];
                         String desc = new String(java.util.Base64.getDecoder().decode(row[4]), java.nio.charset.StandardCharsets.UTF_8);
@@ -475,15 +496,37 @@ public class CorrespondentDashboardFrame extends JFrame {
     private void loadMatchCombo() {
         matchCombo.removeAllItems();
         boolean found = false;
-        for (Match m : matchManager.getAllMatches()) {
-            if (m.getCorrespondentId() != null && m.getCorrespondentId().equals(currentUser.getUserId())) {
-                String desc = m.getHomeTeam().getName() + " vs " + m.getAwayTeam().getName();
-                matchCombo.addItem(desc);
-                found = true;
+        try {
+            if (useServer && socketToken != null && !socketToken.isEmpty()) {
+                if (socketMatchClient == null) socketMatchClient = new SocketMatchClient("127.0.0.1", 5432, socketToken);
+                ensureTeamMap();
+                // Usar la lista previamente filtrada en loadAssignedMatches
+                if (assignedMatchRows.isEmpty()) assignedMatchRows = socketMatchClient.getMatches();
+                for (String[] r : assignedMatchRows) {
+                    String corrId = r.length>8 ? r[8] : null;
+                    if (corrId != null && corrId.equals(currentUser.getUserId())) {
+                        String homeName = teamIdToName.getOrDefault(r[3], r[3]);
+                        String awayName = teamIdToName.getOrDefault(r[4], r[4]);
+                        String desc = homeName + " vs " + awayName;
+                        matchCombo.addItem(desc);
+                        found = true;
+                    }
+                }
+            } else {
+                for (Match m : matchManager.getAllMatches()) {
+                    if (m.getCorrespondentId() != null && m.getCorrespondentId().equals(currentUser.getUserId())) {
+                        String desc = m.getHomeTeam().getName() + " vs " + m.getAwayTeam().getName();
+                        matchCombo.addItem(desc);
+                        found = true;
+                    }
+                }
             }
+        } catch (Exception ex) {
+            System.err.println("Error cargando combo de partidos: " + ex.getMessage());
         }
         if (!found) {
             selectedMatch = null;
+            selectedMatchId = null;
             eventsTableModel.setRowCount(0);
         }
     }
@@ -493,5 +536,15 @@ public class CorrespondentDashboardFrame extends JFrame {
         if (totalMatchesLabel != null) totalMatchesLabel.setText(String.valueOf(total));
         if (completedReportsLabel != null) completedReportsLabel.setText(String.valueOf(completed));
         if (pendingReportsLabel != null) pendingReportsLabel.setText(String.valueOf(pending));
+    }
+
+    // Carga el mapa de equipos id->nombre desde Derby si aún no está cargado
+    private void ensureTeamMap() throws Exception {
+        if (!teamIdToName.isEmpty()) return;
+        if (socketMatchClient == null) socketMatchClient = new SocketMatchClient("127.0.0.1", 5432, socketToken);
+        for (String[] t : socketMatchClient.getTeams()) {
+            // team_id,code,name,country
+            teamIdToName.put(t[0], t[2]);
+        }
     }
 }

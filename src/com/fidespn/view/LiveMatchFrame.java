@@ -4,6 +4,7 @@ import com.fidespn.model.Fanatic;
 import com.fidespn.model.Match;
 import com.fidespn.model.MatchEvent;
 import com.fidespn.service.MatchManager;
+import com.fidespn.client.adapters.SocketMatchClient;
 import com.fidespn.service.UserManager;
 import com.fidespn.service.StatisticsService;
 
@@ -20,6 +21,8 @@ public class LiveMatchFrame extends JFrame implements PropertyChangeListener {
     private MatchManager matchManager;
     private Fanatic currentFanatic;
     private Match currentMatch;
+    private String socketToken;
+    private SocketMatchClient socketMatchClient;
     
     private JLabel scoreLabel;
     private JTextArea eventsArea;
@@ -39,9 +42,11 @@ public class LiveMatchFrame extends JFrame implements PropertyChangeListener {
         setResizable(true);
 
         initComponents();
-        // Subscribe to realtime updates
+        // Subscribe to realtime updates (local bus still used for UI updates)
         this.matchManager.addListener(this);
     }
+
+    public void setSocketToken(String token) { this.socketToken = token; }
 
     private void initComponents() {
         JPanel mainPanel = new JPanel();
@@ -161,6 +166,23 @@ public class LiveMatchFrame extends JFrame implements PropertyChangeListener {
     // Eliminated polling; updates will be event-driven
 
     private void updateMatchInfo() {
+        // Try refreshing match score/events from server if token is available
+        if (socketToken != null && !socketToken.isEmpty()) {
+            try {
+                if (socketMatchClient == null) socketMatchClient = new SocketMatchClient("127.0.0.1", 5432, socketToken);
+                // Fetch latest events and map to model temporarily
+                java.util.List<String[]> rows = socketMatchClient.getEvents(currentMatch.getMatchId());
+                java.util.List<com.fidespn.model.MatchEvent> evs = new java.util.ArrayList<>();
+                for (String[] r : rows) {
+                    int minute = Integer.parseInt(r[1]);
+                    String type = r[2];
+                    String desc = new String(java.util.Base64.getDecoder().decode(r[4]), java.nio.charset.StandardCharsets.UTF_8);
+                    evs.add(new com.fidespn.model.MatchEvent(r[0], currentMatch.getMatchId(), minute, type, desc));
+                }
+                currentMatch.getEvents().clear();
+                currentMatch.getEvents().addAll(evs);
+            } catch (Exception ignored) {}
+        }
         // Actualizar marcador
         int homeScore = currentMatch.getScoreHome();
         int awayScore = currentMatch.getScoreAway();
