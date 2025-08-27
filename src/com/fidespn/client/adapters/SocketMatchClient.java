@@ -62,6 +62,18 @@ public class SocketMatchClient {
         throw new IllegalStateException(parseErr(res));
     }
 
+    public String createMatch(long dateMillis, String time, String homeId, String awayId, String correspondentUsername) throws Exception {
+        String res = client.send("CREATE_MATCH|" + token + "|" + dateMillis + "|" + time + "|" + homeId + "|" + awayId + "|" + correspondentUsername);
+        if (res.startsWith("OK|")) return res.substring(3);
+        if (res.equals("OK")) return "";
+        throw new IllegalStateException(parseErr(res));
+    }
+
+    public void deleteMatch(String matchId) throws Exception {
+        String res = client.send("DELETE_MATCH|" + token + "|" + matchId);
+        if (!res.startsWith("OK")) throw new IllegalStateException(parseErr(res));
+    }
+
     private String parseErr(String res) {
         if (res.startsWith("ERR|")) return res.substring(4);
         return res;

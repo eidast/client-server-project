@@ -200,6 +200,23 @@ public class FanaticDashboardFrame extends JFrame {
         favoriteTeamsPanel.removeAll(); // Limpiar panel antes de añadir
 
         List<String> favoriteTeamIds = currentFanatic.getFavoriteTeamIds();
+        // Intentar sincronizar desde servidor si está disponible
+        if (useServer && socketToken != null && !socketToken.isEmpty()) {
+            try {
+                com.fidespn.client.net.SocketClient sc = new com.fidespn.client.net.SocketClient("127.0.0.1", 5432);
+                String response = sc.send("GET_FAVORITES|" + socketToken + "|" + currentFanatic.getUserId());
+                if (response.startsWith("OK|")) {
+                    String csv = response.substring(3);
+                    java.util.List<String> serverFavs = csv.isEmpty() ? new java.util.ArrayList<>() : java.util.Arrays.asList(csv.split(","));
+                    favoriteTeamIds = new java.util.ArrayList<>(serverFavs);
+                    currentFanatic.getFavoriteTeamIds().clear();
+                    currentFanatic.getFavoriteTeamIds().addAll(favoriteTeamIds);
+                }
+            } catch (Exception ex) {
+                System.err.println("No se pudieron cargar favoritos desde el servidor: " + ex.getMessage());
+            }
+        }
+
         if (favoriteTeamIds.isEmpty()) {
             JLabel noTeamsLabel = new JLabel("No has añadido equipos favoritos aún.");
             noTeamsLabel.setFont(new Font("Inter", Font.PLAIN, 14));

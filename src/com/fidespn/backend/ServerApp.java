@@ -119,6 +119,12 @@ public class ServerApp {
                     return handleAddEvent(parts);
                 case "UPDATE_FAVORITES":
                     return handleUpdateFavorites(parts);
+                case "GET_FAVORITES":
+                    return handleGetFavorites(parts);
+                case "CREATE_MATCH":
+                    return handleCreateMatch(parts);
+                case "DELETE_MATCH":
+                    return handleDeleteMatch(parts);
                 case "GET_USERS":
                     return handleGetUsers(parts);
                 case "CREATE_USER":
@@ -237,6 +243,66 @@ public class ServerApp {
                 }
             }
             c.commit();
+        }
+        return ok("");
+    }
+
+    private String handleGetFavorites(String[] p) throws Exception {
+        if (p.length < 3) return err("BAD_REQUEST", "GET_FAVORITES|token|userId");
+        String token = p[1];
+        String userId = p[2];
+        if (!tokenToUser.containsKey(token)) return err("UNAUTHORIZED", "Token inválido");
+        if (!tokenToUser.get(token).equals(userId)) return err("FORBIDDEN", "Token no pertenece al usuario");
+        try (var c = DerbyUtil.getConnection(); var ps = c.prepareStatement("SELECT team_id FROM favorites WHERE user_id=?")) {
+            ps.setString(1, userId);
+            try (var rs = ps.executeQuery()) {
+                java.util.List<String> ids = new java.util.ArrayList<>();
+                while (rs.next()) ids.add(rs.getString(1));
+                return ok(String.join(",", ids));
+            }
+        }
+    }
+
+    private String handleCreateMatch(String[] p) throws Exception {
+        // CREATE_MATCH|token|dateMillis|time|homeTeamId|awayTeamId|correspondentUsername
+        if (p.length < 7) return err("BAD_REQUEST", "CREATE_MATCH|token|dateMillis|time|homeTeamId|awayTeamId|correspondentUsername");
+        String token = p[1];
+        if (!isAdmin(token)) return err("FORBIDDEN", "Solo admin");
+        long dateMillis = Long.parseLong(p[2]);
+        String timeTxt = p[3];
+        String homeId = p[4];
+        String awayId = p[5];
+        String corrUser = p[6];
+        String corrId = null;
+        try (var c = DerbyUtil.getConnection()) {
+            try (var ps = c.prepareStatement("SELECT id FROM users WHERE username=? AND role='correspondent'")) {
+                ps.setString(1, corrUser);
+                try (var rs = ps.executeQuery()) { if (rs.next()) corrId = rs.getString(1); }
+            }
+            String matchId = java.util.UUID.randomUUID().toString();
+            try (var ps = c.prepareStatement("INSERT INTO matches(match_id,date_ts,time_txt,home_team_id,away_team_id,score_home,score_away,correspondent_id,status) VALUES(?,?,?,?,?,0,0,?,'upcoming')")) {
+                ps.setString(1, matchId);
+                ps.setTimestamp(2, new java.sql.Timestamp(dateMillis));
+                ps.setString(3, timeTxt);
+                ps.setString(4, homeId);
+                ps.setString(5, awayId);
+                ps.setString(6, corrId);
+                ps.executeUpdate();
+            }
+            return ok(matchId);
+        }
+    }
+
+    private String handleDeleteMatch(String[] p) throws Exception {
+        // DELETE_MATCH|token|matchId
+        if (p.length < 3) return err("BAD_REQUEST", "DELETE_MATCH|token|matchId");
+        String token = p[1];
+        if (!isAdmin(token)) return err("FORBIDDEN", "Solo admin");
+        String matchId = p[2];
+        try (var c = DerbyUtil.getConnection()) {
+            try (var delEv = c.prepareStatement("DELETE FROM match_events WHERE match_id=?")) { delEv.setString(1, matchId); delEv.executeUpdate(); }
+            try (var delChat = c.prepareStatement("DELETE FROM chat_messages WHERE match_id=?")) { delChat.setString(1, matchId); delChat.executeUpdate(); }
+            try (var del = c.prepareStatement("DELETE FROM matches WHERE match_id=?")) { del.setString(1, matchId); int n = del.executeUpdate(); if (n==0) return err("NOT_FOUND","Partido no encontrado"); }
         }
         return ok("");
     }
