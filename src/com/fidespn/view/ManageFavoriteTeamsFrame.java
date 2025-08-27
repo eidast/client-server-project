@@ -40,6 +40,8 @@ public class ManageFavoriteTeamsFrame extends JFrame {
         setResizable(true);
         
         initComponents();
+        // Sincronizar favoritos desde servidor antes de cargar checkboxes
+        syncFavoritesFromServer();
         loadTeams();
     }
 
@@ -100,6 +102,22 @@ public class ManageFavoriteTeamsFrame extends JFrame {
         mainPanel.add(buttonPanel, BorderLayout.SOUTH);
 
         add(mainPanel);
+    }
+
+    private void syncFavoritesFromServer() {
+        if (!useServer || socketToken == null || socketToken.isEmpty()) return;
+        try {
+            com.fidespn.client.net.SocketClient sc = new com.fidespn.client.net.SocketClient("127.0.0.1", 5432);
+            String response = sc.send("GET_FAVORITES|" + socketToken + "|" + currentFanatic.getUserId());
+            if (response.startsWith("OK|")) {
+                String csv = response.substring(3);
+                java.util.List<String> serverFavs = csv.isEmpty() ? new java.util.ArrayList<>() : java.util.Arrays.asList(csv.split(","));
+                currentFanatic.getFavoriteTeamIds().clear();
+                currentFanatic.getFavoriteTeamIds().addAll(serverFavs);
+            }
+        } catch (Exception ex) {
+            System.err.println("No se pudieron sincronizar favoritos desde el servidor: " + ex.getMessage());
+        }
     }
 
     private void loadTeams() {

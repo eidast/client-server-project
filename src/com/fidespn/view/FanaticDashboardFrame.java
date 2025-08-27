@@ -44,6 +44,12 @@ public class FanaticDashboardFrame extends JFrame {
 
     public void setSocketToken(String token) {
         this.socketToken = token;
+        // Refrescar favoritos y partidos desde el servidor cuando el token esté disponible
+        try {
+            loadFavoriteTeams();
+            loadFeaturedMatches();
+        } catch (Exception ignored) {
+        }
     }
 
     private void initComponents() {

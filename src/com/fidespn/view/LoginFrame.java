@@ -201,7 +201,9 @@ public class LoginFrame extends JFrame {
 
                 String role = socketUserClient.getRole();
                 if ("admin".equalsIgnoreCase(role)) {
-                    new AdminDashboardFrame(userManager, matchManager).setVisible(true);
+                    AdminDashboardFrame a = new AdminDashboardFrame(userManager, matchManager);
+                    a.setSocketToken(socketUserClient.getToken());
+                    a.setVisible(true);
                 } else if ("correspondent".equalsIgnoreCase(role)) {
                     com.fidespn.model.Correspondent corr = new com.fidespn.model.Correspondent(
                             socketUserClient.getUserId(), username, "", socketUserClient.getEmail());

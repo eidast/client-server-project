@@ -6,6 +6,7 @@ import com.fidespn.model.Administrator; // <--- AGREGADO
 import com.fidespn.model.Correspondent; // <--- AGREGADO
 import com.fidespn.model.Fanatic;       // <--- AGREGADO
 import com.fidespn.client.adapters.SocketUserClient;
+import com.fidespn.client.adapters.SocketMatchClient;
 import com.fidespn.service.MatchManager;
 import com.fidespn.service.UserManager;
 import com.fidespn.service.exceptions.MatchNotFoundException;
@@ -28,6 +29,7 @@ public class AdminDashboardFrame extends JFrame {
     private boolean useServer = true; // Siempre cliente-servidor para CRUD de usuarios
     private String socketToken;
     private SocketUserClient socketUserClient;
+    private SocketMatchClient socketMatchClient;
 
     private DefaultTableModel matchesTableModel;
     private JTable matchesTable;
@@ -809,19 +811,42 @@ public class AdminDashboardFrame extends JFrame {
     private void loadDataIntoTables() {
         matchesTableModel.setRowCount(0);
         SimpleDateFormat sdf = new SimpleDateFormat("dd MMM yyyy | hh:mm a");
-        List<Match> matches = matchManager.getAllMatches();
-        for (Match match : matches) {
-            String matchName = match.getHomeTeam().getName() + " vs " + match.getAwayTeam().getName();
-            String dateTime = sdf.format(match.getDate()) + " (CR)";
-            String correspondentName = "N/A";
-            try {
-                User corr = userManager.getUserById(match.getCorrespondentId());
-                correspondentName = corr.getUsername();
-            } catch (UserNotFoundException e) {
-                System.err.println("Corresponsal no encontrado para el partido " + match.getMatchId() + ": " + e.getMessage());
+        try {
+            if (useServer && socketToken != null && !socketToken.isEmpty()) {
+                if (socketMatchClient == null) socketMatchClient = new SocketMatchClient("127.0.0.1", 5432, socketToken);
+                java.util.List<String[]> rows = socketMatchClient.getMatches();
+                for (String[] r : rows) {
+                    // r: matchId,dateMillis,time,homeId,awayId,scoreH,scoreA,status,corrId
+                    String matchName = matchManager.getTeamById(r[3]).getName() + " vs " + matchManager.getTeamById(r[4]).getName();
+                    String dateTime = sdf.format(new java.util.Date(Long.parseLong(r[1]))) + " (CR)";
+                    String correspondentName = "N/A";
+                    try {
+                        if (r.length>8 && r[8] != null && !r[8].isEmpty()) {
+                            User corr = userManager.getUserById(r[8]);
+                            correspondentName = corr.getUsername();
+                        }
+                    } catch (UserNotFoundException ignore) {}
+                    String status = r[7].substring(0,1).toUpperCase() + r[7].substring(1);
+                    matchesTableModel.addRow(new Object[]{matchName, dateTime, correspondentName, status, ""});
+                }
+            } else {
+                List<Match> matches = matchManager.getAllMatches();
+                for (Match match : matches) {
+                    String matchName = match.getHomeTeam().getName() + " vs " + match.getAwayTeam().getName();
+                    String dateTime = sdf.format(match.getDate()) + " (CR)";
+                    String correspondentName = "N/A";
+                    try {
+                        User corr = userManager.getUserById(match.getCorrespondentId());
+                        correspondentName = corr.getUsername();
+                    } catch (UserNotFoundException e) {
+                        System.err.println("Corresponsal no encontrado para el partido " + match.getMatchId() + ": " + e.getMessage());
+                    }
+                    String status = match.getStatus().substring(0, 1).toUpperCase() + match.getStatus().substring(1);
+                    matchesTableModel.addRow(new Object[]{matchName, dateTime, correspondentName, status, ""});
+                }
             }
-            String status = match.getStatus().substring(0, 1).toUpperCase() + match.getStatus().substring(1);
-            matchesTableModel.addRow(new Object[]{matchName, dateTime, correspondentName, status, ""});
+        } catch (Exception ex) {
+            System.err.println("Error cargando partidos: " + ex.getMessage());
         }
 
         usersTableModel.setRowCount(0);
@@ -1053,14 +1078,18 @@ public class AdminDashboardFrame extends JFrame {
             }
             String corrId = corrMap.get(corrSel);
             try {
-                matchManager.createMatch(selectedDate, timeStr, homeId, awayId, corrId);
+                if (useServer && socketToken != null && !socketToken.isEmpty()) {
+                    if (socketMatchClient == null) socketMatchClient = new SocketMatchClient("127.0.0.1", 5432, socketToken);
+                    // Use correspondent username selection
+                    String corrUsername = corrSel;
+                    socketMatchClient.createMatch(selectedDate.getTime(), timeStr, homeId, awayId, corrUsername);
+                } else {
+                    matchManager.createMatch(selectedDate, timeStr, homeId, awayId, corrId);
+                }
                 messageLabel.setText("Partido creado exitosamente");
                 messageLabel.setForeground(new Color(34, 197, 94));
                 loadDataIntoTables();
                 new javax.swing.Timer(1200, evt -> dialog.dispose()).start();
-            } catch (com.fidespn.service.exceptions.TeamNotFoundException ex) {
-                messageLabel.setText("Equipo no encontrado");
-                messageLabel.setForeground(new Color(239, 68, 68));
             } catch (Exception ex) {
                 messageLabel.setText("Error: " + ex.getMessage());
                 messageLabel.setForeground(new Color(239, 68, 68));
